@@ -6,16 +6,12 @@
         <img src="@/assets/logo.svg" alt="Logo" class="logo" />
         <span class="site-title">CodeCraft AI</span>
       </div>
-      
+
       <!-- 导航菜单 -->
-      <a-menu
-        v-model:selectedKeys="selectedKeys"
-        mode="horizontal"
-        class="nav-menu"
-        :items="menuItems"
-      />
+      <a-menu v-model:selectedKeys="selectedKeys" mode="horizontal" class="nav-menu" :items="menuItems"
+        @click="handleMenuClick" />
     </div>
-    
+
     <div class="header-right">
       <!-- 登录按钮（暂时替代用户头像和昵称） -->
       <a-button type="primary" @click="handleLogin">
@@ -28,29 +24,36 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { MenuProps } from 'ant-design-vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 // 选中的菜单项
 const selectedKeys = ref<string[]>(['home'])
+// 监听路由变化，更新选中的菜单项
+router.afterEach((to) => {
+  selectedKeys.value = [to.path]
+})
 
 // 菜单配置
 const menuItems: MenuProps['items'] = [
   {
-    key: 'home',
+    key: '/',
     label: '首页',
     title: '首页'
   },
   {
-    key: 'about',
+    key: '/about',
     label: '关于',
     title: '关于'
   },
   {
-    key: 'features',
+    key: '/features',
     label: '功能',
     title: '功能'
   },
   {
-    key: 'contact',
+    key: '/contact',
     label: '联系我们',
     title: '联系我们'
   }
@@ -59,6 +62,14 @@ const menuItems: MenuProps['items'] = [
 // 登录处理
 const handleLogin = () => {
   console.log('登录功能待实现')
+}
+
+const handleMenuClick = (menuInfo: { key: string }) => {
+  const key = menuInfo.key
+  selectedKeys.value = [key]
+  if (key.startsWith('/')) {
+    router.push(key)
+  }
 }
 </script>
 
@@ -113,17 +124,18 @@ const handleLogin = () => {
   .global-header {
     padding: 0 16px;
   }
-  
+
   .logo-section {
     margin-right: 20px;
   }
-  
+
   .site-title {
     font-size: 16px;
   }
-  
+
   .nav-menu {
-    display: none; /* 在小屏幕上隐藏菜单，可以后续添加移动端菜单 */
+    display: none;
+    /* 在小屏幕上隐藏菜单，可以后续添加移动端菜单 */
   }
 }
 
@@ -131,12 +143,12 @@ const handleLogin = () => {
   .global-header {
     padding: 0 12px;
   }
-  
+
   .logo {
     height: 28px;
     width: 28px;
   }
-  
+
   .site-title {
     font-size: 14px;
   }
