@@ -13,63 +13,92 @@
     </div>
 
     <div class="header-right">
-      <!-- 登录按钮（暂时替代用户头像和昵称） -->
-      <a-button type="primary" @click="handleLogin">
-        登录
-      </a-button>
+      <div v-if="isLogin">
+        <a-dropdown>
+          <a-space>
+            <a-avatar :src="loginUserStore.loginUser.avatar" :style="{ backgroundColor: '#1890ff' }">
+              {{ loginUserStore.loginUser.name?.charAt(0) || loginUserStore.loginUser.account?.charAt(0) }}
+            </a-avatar>
+            {{ loginUserStore.loginUser.name }}
+          </a-space>
+          <template #overlay>
+            <a-menu>
+              <a-menu-item key="logout" @click="handleLogout">
+                退出登录
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
+      </div>
+      <div v-else>
+        <a-button type="primary" @click="handleLogin">
+          登录
+        </a-button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { MenuProps } from 'ant-design-vue'
+import { ref, computed } from 'vue'
+import { message, type MenuProps } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
+import { useLoginUserStore } from '@/stores/loginUser'
+import { doLogout } from '@/api/yonghukongzhiqi'
+import type { MenuItem, UserRole } from './menu'
+import { checkMenuPermission } from './AuthUtil'
+import { doJump, getMenuConfig } from '@/config/menuConfig'
 
-const router = useRouter()
+const router = useRouter();
+const loginUserStore = useLoginUserStore();
+
+const isLogin = computed(() => {
+  return loginUserStore.loginUser.id;
+});
 
 // 选中的菜单项
-const selectedKeys = ref<string[]>(['home'])
+const selectedKeys = ref<string[]>(['/']);
 // 监听路由变化，更新选中的菜单项
 router.afterEach((to) => {
   selectedKeys.value = [to.path]
-})
+});
 
-// 菜单配置
-const menuItems: MenuProps['items'] = [
-  {
-    key: '/',
-    label: '首页',
-    title: '首页'
-  },
-  {
-    key: '/about',
-    label: '关于',
-    title: '关于'
-  },
-  {
-    key: '/features',
-    label: '功能',
-    title: '功能'
-  },
-  {
-    key: '/contact',
-    label: '联系我们',
-    title: '联系我们'
-  }
-]
+// 从配置文件获取菜单配置
+const allMenuItems: MenuItem[] = getMenuConfig();
+
+// 根据用户权限过滤菜单
+const menuItems = computed<MenuProps['items']>(() => {
+  const userRole = (loginUserStore.loginUser.role as UserRole) || 'GUEST';
+
+  return allMenuItems
+    .filter(item => checkMenuPermission(item, userRole))
+    .map(item => ({
+      key: item.key,
+      label: item.label,
+      title: item.title
+    }));
+})
 
 // 登录处理
 const handleLogin = () => {
-  console.log('登录功能待实现')
+  // 包含回调 如果是从其他页面跳转过来的 则需要在登录成功后跳转回该页面
+  const redirect = router.currentRoute.value.fullPath;
+  if (!redirect.includes('/login') && !redirect.includes('/register')) {
+    router.push('/auth/login?redirect=' + redirect);
+  }
 }
 
 const handleMenuClick = (menuInfo: { key: string }) => {
-  const key = menuInfo.key
-  selectedKeys.value = [key]
-  if (key.startsWith('/')) {
-    router.push(key)
-  }
+  const key = menuInfo.key;
+  selectedKeys.value = [key];
+  doJump(key);
+}
+
+const handleLogout = async () => {
+  await doLogout();
+  loginUserStore.logout();
+  router.push('/auth/login');
+  message.success('退出登录成功');
 }
 </script>
 

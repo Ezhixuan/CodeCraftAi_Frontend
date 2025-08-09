@@ -24,22 +24,40 @@ myAxios.interceptors.request.use(
 myAxios.interceptors.response.use(
   function (response) {
     const { data } = response
-    // 未登录
-    if (data.code === 40100) {
-      // 不是获取用户信息的请求，并且用户目前不是已经在用户登录页面，则跳转到登录页面
-      if (
-        !response.request.responseURL.includes('user/get/login') &&
-        !window.location.pathname.includes('/user/login')
-      ) {
-        message.warning('请先登录')
-        window.location.href = `/user/login?redirect=${window.location.href}`
+
+    // 统一处理业务响应
+    if (data && typeof data.code !== 'undefined') {
+      // 请求成功，返回data内容
+      if (data.code === 0) {
+        return data.data
       }
+
+      // 未登录
+      if (data.code === 40100) {
+        // 不是获取用户信息的请求，并且用户目前不是已经在用户登录页面，则跳转到登录页面
+        if (
+          !response.request.responseURL.includes('/auth/login') &&
+          !window.location.pathname.includes('/auth/login')
+        ) {
+          message.warning('请先登录')
+          window.location.href = `/auth/login?redirect=${window.location.href}`
+        }
+        return Promise.reject(new Error(data.message || '未登录'))
+      }
+
+      // 其他业务错误
+      const errorMessage = data.message || '请求失败'
+      message.error(errorMessage)
+      return Promise.reject(new Error(errorMessage))
     }
+
+    // 非标准响应格式，直接返回
     return response
   },
   function (error) {
-    // Any status codes that falls outside the range of 2xx cause this function to trigger
-    // Do something with response error
+    // 网络错误或其他错误
+    const errorMessage = error.response?.data?.message || error.message || '网络错误'
+    message.error(errorMessage)
     return Promise.reject(error)
   },
 )

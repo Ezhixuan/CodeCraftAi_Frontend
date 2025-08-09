@@ -39,8 +39,8 @@ import GlobalFooter from '../components/GlobalFooter.vue'
 }
 
 .content {
-  flex: 1;
-  padding: 24px;
+  flex: 1 1 auto;
+  padding: 0;
   background: #f0f2f5;
   min-height: calc(100vh - 64px - 70px);
   /* 减去 header 和 footer 高度 */

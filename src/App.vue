@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { isOk } from './api/jiankangjiancha';
 import BasicLayout from './layouts/BasicLayout.vue'
+import { useLoginUserStore } from './stores/loginUser';
 
-isOk().then(res => {
-  console.log(res)
-})
+const loginUserStore = useLoginUserStore();
+loginUserStore.fetchLoginUserInfo();
+
 </script>
 
 <template>
