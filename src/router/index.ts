@@ -24,6 +24,15 @@ const router = createRouter({
       name: 'auth-register',
       component: () => import('@/views/user/auth/UserAuthView.vue'),
     },
+    // 用户个人信息页面
+    {
+      path: '/user/profile',
+      name: 'user-profile',
+      component: () => import('@/views/user/UserProfileView.vue'),
+      meta: {
+        requiresAuth: true,
+      },
+    },
     // 管理员用户管理页面
     {
       path: '/admin/users',

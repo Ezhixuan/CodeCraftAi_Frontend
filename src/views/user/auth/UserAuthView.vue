@@ -142,14 +142,6 @@ onMounted(() => {
   backdrop-filter: blur(10px);
 }
 
-.login-panel {
-  /* 登录面板样式 */
-}
-
-.register-panel {
-  /* 注册面板样式 */
-}
-
 /* 表单区域 */
 .form-section {
   flex: 1;

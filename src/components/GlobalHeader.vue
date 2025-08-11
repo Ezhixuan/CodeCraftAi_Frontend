@@ -23,6 +23,9 @@
           </a-space>
           <template #overlay>
             <a-menu>
+              <a-menu-item key="profile" @click="handleProfileClick">
+                个人信息
+              </a-menu-item>
               <a-menu-item key="logout" @click="handleLogout">
                 退出登录
               </a-menu-item>
@@ -99,6 +102,10 @@ const handleLogout = async () => {
   loginUserStore.logout();
   router.push('/auth/login');
   message.success('退出登录成功');
+}
+
+const handleProfileClick = () => {
+  router.push('/user/profile');
 }
 </script>
 
