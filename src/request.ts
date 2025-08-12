@@ -1,11 +1,12 @@
 import axios from 'axios'
 import { message } from 'ant-design-vue'
+import { apiConfig } from './config/apiConfig'
 
 // 创建 Axios 实例
 const myAxios = axios.create({
-  baseURL: 'http://localhost:8911/api',
-  timeout: 60000,
-  withCredentials: true,
+  baseURL: apiConfig.baseURL,
+  timeout: apiConfig.timeout,
+  withCredentials: apiConfig.withCredentials,
 })
 
 // 全局请求拦截器
@@ -35,11 +36,11 @@ myAxios.interceptors.response.use(
       // 未登录
       if (data.code === 40100) {
         // 不是获取用户信息的请求，并且用户目前不是已经在用户登录页面，则跳转到登录页面
+        message.warning(data.message || '未登录')
         if (
           !response.request.responseURL.includes('/auth/login') &&
           !window.location.pathname.includes('/auth/login')
         ) {
-          message.warning('请先登录')
           window.location.href = `/auth/login?redirect=${window.location.href}`
         }
         return Promise.reject(new Error(data.message || '未登录'))

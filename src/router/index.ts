@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,7 +6,13 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: () => import('@/views/HomeView.vue'),
+    },
+    // 代码生成和预览页面
+    {
+      path: '/app/code-message',
+      name: 'CodeMessage',
+      component: () => import('@/views/app/CodeMessageView.vue'),
     },
     // 新的统一认证页面
     {
