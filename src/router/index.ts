@@ -51,6 +51,16 @@ const router = createRouter({
         requiresAdmin: true,
       },
     },
+    // 管理员应用管理页面
+    {
+      path: '/admin/apps',
+      name: 'admin-apps',
+      component: () => import('@/views/app/admin/AppManagerView.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
+    },
   ],
 })
 

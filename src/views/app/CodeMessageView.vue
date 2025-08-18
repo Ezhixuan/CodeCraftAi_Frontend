@@ -237,7 +237,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
@@ -250,7 +250,7 @@ import {
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownRenderer from '@/components/MarkdownComponent.vue'
 import InputComponent from '@/components/InputComponent.vue'
-import { deployPreview } from '@/api/jingtaiziyuanbushukongzhiqi'
+import { deployPreview, getDeployStatus } from '@/api/jingtaiziyuanbushukongzhiqi'
 import { getInfo, getList } from '@/api/yingyongkongzhiqi'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { BASE_URL } from '@/config/apiConfig'
@@ -278,14 +278,11 @@ const previewUrl = ref('')
 const canPreview = ref(false)
 const deployPercent = ref(0)
 const deployProgress = ref('准备部署环境...')
-const eventSource = ref<EventSource | null>(null)
 const messageListRef = ref<HTMLElement | null>(null)
 const currentAppId = ref('0')
 
 // --- Timers and Intervals ---
-let connectionTimeout: ReturnType<typeof setTimeout> | null = null
 let deployTimer: ReturnType<typeof setTimeout> | null = null
-let generatingTextTimer: ReturnType<typeof setInterval> | null = null
 
 // --- Router and Stores ---
 const route = useRoute()
@@ -444,7 +441,7 @@ const handleCreateApp = () => {
  */
 const handleAppClick = async (app: API.AppInfoCommonResVo) => {
   if (app.id) {
-    await router.push(`/app/code-message?appId=${app.id}`)
+    router.push(`/app/code-message?appId=${app.id}`)
     appId.value = app.id
     await getAppInfo(app.id)
     isDrawerVisible.value = false
@@ -452,6 +449,7 @@ const handleAppClick = async (app: API.AppInfoCommonResVo) => {
     // 使用componentKey强制重新渲染组件，避免Pinia状态丢失
     componentKey.value += 1
     currentAppId.value += 1
+    init()
 
     // 使用nextTick确保路由跳转完成后重新获取应用列表
     await nextTick()
@@ -506,6 +504,10 @@ const getRoleText = (role?: string) => {
 
 // --- Application Initialization ---
 onMounted(async () => {
+  await init()
+})
+
+const init = async () => {
   const id = route.query.appId as string
   if (!id) {
     router.push('/')
@@ -515,9 +517,8 @@ onMounted(async () => {
   currentAppId.value = id
   await getAppInfo(id)
 
-  const messageContent = route.query.message as string
-  const shouldStartGeneration = route.query.action === 'true'
-
+  const messageContent = route.query.userMessage as string
+  const shouldStartGeneration = route.query.action === 'create'
   if (shouldStartGeneration && messageContent && isOwner.value) {
     const userMsg: ChatMessage = {
       id: generateId(),
@@ -528,7 +529,8 @@ onMounted(async () => {
     messages.value.push(userMsg)
     startCodeGeneration(messageContent)
   }
-})
+  getDeployPreviewStatus()
+}
 
 async function getAppInfo(id: string) {
   try {
@@ -543,22 +545,23 @@ async function getAppInfo(id: string) {
   }
 }
 
-// --- Lifecycle Management ---
-onUnmounted(() => {
-  cleanup()
-})
-
-function cleanup() {
-  if (eventSource.value) {
-    eventSource.value.close()
+async function getDeployPreviewStatus() {
+  if (!appId.value) return
+  const response = await getDeployStatus({ appId: appId.value })
+  if (response.data.data) {
+    const status = response.data.data
+    console.log('status', status)
+    if (status.deployFileExists && status.deployTime && status.preDeployKey) {
+      canPreview.value = true
+      previewUrl.value = getPreviewUrl(status.preDeployKey)
+      console.log('previewUrl', previewUrl.value)
+      console.log('canPreview', canPreview.value)
+    }
   }
-  if (connectionTimeout) clearTimeout(connectionTimeout)
-  if (deployTimer) clearTimeout(deployTimer)
-  if (generatingTextTimer) clearInterval(generatingTextTimer)
 }
 
 // --- AI Chat & Code Generation ---
-function sendMessage() {
+const sendMessage = async () => {
   const content = newMessage.value.trim()
   if (!content || isGenerating.value) return
 
@@ -572,13 +575,14 @@ function sendMessage() {
   newMessage.value = ''
   canPreview.value = false
   previewUrl.value = ''
-  startCodeGeneration(content)
+  await startCodeGeneration(content)
 }
 
-function startCodeGeneration(messageContent: string) {
+async function startCodeGeneration(messageContent: string) {
   if (!appId.value) return
+  let eventSource: EventSource | null = null
+  let streamCompleted = false
 
-  cleanup() // Ensure any previous connection is closed
   isGenerating.value = true
   canPreview.value = false
 
@@ -590,60 +594,82 @@ function startCodeGeneration(messageContent: string) {
     isGenerating: true,
   }
   messages.value.push(aiMessage)
+  await nextTick()
   scrollToBottom()
 
   // Start generating text animation
-  generatingTextIndex.value = 0
-  generatingTextTimer = setInterval(() => {
-    generatingTextIndex.value++
-  }, 2000)
+  generatingTextIndex.value = messages.value.length - 1
 
   const url = `${BASE_URL}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
-  eventSource.value = new EventSource(url, { withCredentials: true })
+  eventSource = new EventSource(url, { withCredentials: true })
 
-  connectionTimeout = setTimeout(() => handleGenerationError('生成超时，请重试'), 10 * 60 * 1000) // 10 minutes
+  setTimeout(
+    () => handleGenerationError('生成超时，请重试', generatingTextIndex.value),
+    10 * 60 * 1000,
+  ) // 10 minutes
 
-  eventSource.value.onmessage = (event) => {
-    if (event.data.includes('[DONE]')) {
-      closeConnection()
-      return
-    }
+  let fullContent = ''
+
+  eventSource.onmessage = function (event) {
+    if (streamCompleted) return
     try {
       const data = JSON.parse(event.data)
-      if (data.d) {
-        aiMessage.content += data.d
+      const content = data.d
+      if (content !== undefined && content !== null) {
+        fullContent += content
+        messages.value[generatingTextIndex.value].content = fullContent
+        messages.value[generatingTextIndex.value].isGenerating = false
         scrollToBottom()
       }
-    } catch (e) {
-      console.error('解析SSE数据失败:', event.data, e)
+    } catch (error) {
+      console.error('处理SSE消息失败:', error)
+      handleGenerationError('处理SSE消息失败', generatingTextIndex.value)
     }
   }
 
-  eventSource.value.onerror = () => handleGenerationError('连接错误，请检查网络后重试')
-  eventSource.value.addEventListener('end', closeConnection)
-}
+  // 处理 done 事件
+  eventSource.addEventListener('done', function () {
+    if (streamCompleted) return
 
-function closeConnection() {
-  isGenerating.value = false
-  if (generatingTextTimer) clearInterval(generatingTextTimer)
-  if (connectionTimeout) clearTimeout(connectionTimeout)
-  if (eventSource.value) eventSource.value.close()
+    streamCompleted = true
+    isGenerating.value = false
+    eventSource.close()
 
-  const lastMessage = messages.value[messages.value.length - 1]
-  if (lastMessage?.type === 'ai' && lastMessage.isGenerating) {
-    lastMessage.isGenerating = false
-    lastMessage.timestamp = Date.now()
-    if (lastMessage.content.trim()) {
-      canPreview.value = true
+    // 延迟更新预览,确保后端处理结束
+    setTimeout(async () => {
+      if (appId.value) {
+        await getAppInfo(appId.value)
+        handlePreview()
+      }
+    }, 1000)
+  })
+
+  // 处理异常事件
+  eventSource.onerror = function () {
+    if (streamCompleted || !isGenerating.value) return
+    // 检查链接是否关闭
+    if (eventSource.readyState === eventSource.CONNECTING) {
+      streamCompleted = true
+      isGenerating.value = false
+      eventSource.close()
+
+      setTimeout(async () => {
+        if (appId.value) {
+          await getAppInfo(appId.value)
+          handlePreview()
+        }
+      }, 1000)
+    } else {
+      handleGenerationError('生成失败，请重试', generatingTextIndex.value)
     }
   }
 }
 
-function handleGenerationError(error: string) {
+function handleGenerationError(error: string, index: number) {
   errorMessage.value = error
   isGenerating.value = false
-  messages.value = messages.value.filter((m) => !m.isGenerating)
-  cleanup()
+  messages.value[index].content = error
+  messages.value[index].isGenerating = false
 }
 
 // --- User Interface Actions ---
@@ -680,7 +706,7 @@ function openInNewTab() {
 
 // --- Code Preview & Deployment ---
 async function handlePreview() {
-  if (!canPreview.value || isDeploying.value) return
+  console.log('handlePreview', canPreview.value, isDeploying.value)
   if (!appId.value) return
 
   isDeploying.value = true
@@ -709,12 +735,15 @@ async function handlePreview() {
   try {
     const response = await deployPreview({ appId: appId.value })
     const deployKey = response.data.data
+    console.log(deployKey)
     if (deployKey) {
-      previewUrl.value = `${BASE_URL}/deploy/redirect/${deployKey}`
+      previewUrl.value = getPreviewUrl(deployKey)
       deployPercent.value = 100
       deployProgress.value = '部署完成！'
+      canPreview.value = true
       message.success('应用部署成功！')
     } else {
+      canPreview.value = false
       throw new Error('Invalid deploy key received')
     }
   } catch (error) {
@@ -726,6 +755,10 @@ async function handlePreview() {
       isDeploying.value = false
     }, 1000)
   }
+}
+
+const getPreviewUrl = (deployKey: string) => {
+  return `${BASE_URL}/deploy/redirect/${deployKey}`
 }
 
 // --- Drawer State ---

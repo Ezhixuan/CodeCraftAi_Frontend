@@ -154,7 +154,11 @@ const loadFeaturedApps = async () => {
  * 处理生成应用按钮点击事件
  */
 const handleSubmit = async () => {
-  if (isLoggedIn.value) return
+  if (!isLoggedIn.value) {
+    message.error('请先登录')
+    return
+  }
+
   const userInputMessage = userInput.value.trim()
   if (!userInputMessage) {
     return
@@ -167,7 +171,7 @@ const handleSubmit = async () => {
 
   if (response.data.data) {
     // 跳转对应的应用详情页
-    router.push({
+    await router.push({
       path: '/app/code-message',
       query: {
         appId: response.data.data,

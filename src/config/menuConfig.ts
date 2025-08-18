@@ -35,12 +35,30 @@ export const menuConfig: MenuItem[] = [
     order: 4,
   },
   {
-    key: '/admin/users',
+    key: '/admin',
     label: '管理员',
     title: '管理员',
-    path: '/admin/users',
+    path: '/admin',
     roles: ['ADMIN'], // 仅管理员可见
     order: 5,
+    children: [
+      {
+        key: '/admin/users',
+        label: '用户管理',
+        title: '用户管理',
+        path: '/admin/users',
+        roles: ['ADMIN'], // 仅管理员可见
+        order: 1,
+      },
+      {
+        key: '/admin/apps',
+        label: '应用管理',
+        title: '应用管理',
+        path: '/admin/apps',
+        roles: ['ADMIN'], // 仅管理员可见
+        order: 2,
+      },
+    ],
   },
 ]
 
@@ -62,12 +80,33 @@ export const getMenuItemByPath = (path: string): MenuItem | undefined => {
 }
 
 /**
- * 根据key获取菜单项
+ * 递归查找菜单项（支持子菜单）
+ * @param items 菜单项数组
+ * @param key 菜单key
+ * @returns 菜单项或undefined
+ */
+const findMenuItemByKey = (items: MenuItem[], key: string): MenuItem | undefined => {
+  for (const item of items) {
+    if (item.key === key) {
+      return item
+    }
+    if (item.children && item.children.length > 0) {
+      const found = findMenuItemByKey(item.children, key)
+      if (found) {
+        return found
+      }
+    }
+  }
+  return undefined
+}
+
+/**
+ * 根据key获取菜单项（支持子菜单）
  * @param key 菜单key
  * @returns 菜单项或undefined
  */
 export const getMenuItemByKey = (key: string): MenuItem | undefined => {
-  return menuConfig.find((item) => item.key === key)
+  return findMenuItemByKey(menuConfig, key)
 }
 
 /**

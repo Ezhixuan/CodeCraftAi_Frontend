@@ -75,17 +75,48 @@ router.afterEach((to) => {
 // 从配置文件获取菜单配置
 const allMenuItems: MenuItem[] = getMenuConfig()
 
+// 定义菜单项类型
+interface ProcessedMenuItem {
+  key: string
+  label: string
+  title: string
+  children?: ProcessedMenuItem[]
+}
+
+// 递归处理菜单项，支持子菜单
+const processMenuItem = (item: MenuItem, userRole: UserRole): ProcessedMenuItem | null => {
+  // 检查当前菜单项权限
+  if (!checkMenuPermission(item, userRole)) {
+    return null
+  }
+
+  const menuItem: ProcessedMenuItem = {
+    key: item.key,
+    label: item.label,
+    title: item.title,
+  }
+
+  // 处理子菜单
+  if (item.children && item.children.length > 0) {
+    const children = item.children
+      .map((child) => processMenuItem(child, userRole))
+      .filter((child): child is ProcessedMenuItem => child !== null) // 过滤掉权限不足的子菜单项
+    
+    if (children.length > 0) {
+      menuItem.children = children
+    }
+  }
+
+  return menuItem
+}
+
 // 根据用户权限过滤菜单
 const menuItems = computed<MenuProps['items']>(() => {
   const userRole = (loginUserStore.loginUser.role as UserRole) || 'GUEST'
 
   return allMenuItems
-    .filter((item) => checkMenuPermission(item, userRole))
-    .map((item) => ({
-      key: item.key,
-      label: item.label,
-      title: item.title,
-    }))
+    .map((item) => processMenuItem(item, userRole))
+    .filter(Boolean) // 过滤掉权限不足的菜单项
 })
 
 // 登录处理
