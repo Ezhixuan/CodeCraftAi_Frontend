@@ -8,35 +8,40 @@
       </div>
 
       <!-- 导航菜单 -->
-      <a-menu v-model:selectedKeys="selectedKeys" mode="horizontal" class="nav-menu" :items="menuItems"
-        @click="handleMenuClick" />
+      <a-menu
+        v-model:selectedKeys="selectedKeys"
+        mode="horizontal"
+        class="nav-menu"
+        :items="menuItems"
+        @click="handleMenuClick"
+      />
     </div>
 
     <div class="header-right">
       <div v-if="isLogin">
         <a-dropdown>
           <a-space>
-            <a-avatar :src="loginUserStore.loginUser.avatar" :style="{ backgroundColor: '#1890ff' }">
-              {{ loginUserStore.loginUser.name?.charAt(0) || loginUserStore.loginUser.account?.charAt(0) }}
+            <a-avatar
+              :src="loginUserStore.loginUser.avatar"
+              :style="{ backgroundColor: '#1890ff' }"
+            >
+              {{
+                loginUserStore.loginUser.name?.charAt(0) ||
+                loginUserStore.loginUser.account?.charAt(0)
+              }}
             </a-avatar>
             {{ loginUserStore.loginUser.name }}
           </a-space>
           <template #overlay>
             <a-menu>
-              <a-menu-item key="profile" @click="handleProfileClick">
-                个人信息
-              </a-menu-item>
-              <a-menu-item key="logout" @click="handleLogout">
-                退出登录
-              </a-menu-item>
+              <a-menu-item key="profile" @click="handleProfileClick"> 个人信息 </a-menu-item>
+              <a-menu-item key="logout" @click="handleLogout"> 退出登录 </a-menu-item>
             </a-menu>
           </template>
         </a-dropdown>
       </div>
       <div v-else>
-        <a-button type="primary" @click="handleLogin">
-          登录
-        </a-button>
+        <a-button type="primary" @click="handleLogin"> 登录 </a-button>
       </div>
     </div>
   </div>
@@ -48,64 +53,65 @@ import { message, type MenuProps } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { doLogout } from '@/api/yonghukongzhiqi'
-import type { MenuItem, UserRole } from './menu'
+import type { MenuItem, UserRole } from '../config/menu'
 import { checkMenuPermission } from './AuthUtil'
 import { doJump, getMenuConfig } from '@/config/menuConfig'
 
-const router = useRouter();
-const loginUserStore = useLoginUserStore();
+const router = useRouter()
+const loginUserStore = useLoginUserStore()
 
 const isLogin = computed(() => {
-  return loginUserStore.loginUser.id;
-});
+  console.log('isLogin', loginUserStore.isLogin())
+  return loginUserStore.isLogin()
+})
 
 // 选中的菜单项
-const selectedKeys = ref<string[]>(['/']);
+const selectedKeys = ref<string[]>(['/'])
 // 监听路由变化，更新选中的菜单项
 router.afterEach((to) => {
   selectedKeys.value = [to.path]
-});
+})
 
 // 从配置文件获取菜单配置
-const allMenuItems: MenuItem[] = getMenuConfig();
+const allMenuItems: MenuItem[] = getMenuConfig()
 
 // 根据用户权限过滤菜单
 const menuItems = computed<MenuProps['items']>(() => {
-  const userRole = (loginUserStore.loginUser.role as UserRole) || 'GUEST';
+  const userRole = (loginUserStore.loginUser.role as UserRole) || 'GUEST'
 
   return allMenuItems
-    .filter(item => checkMenuPermission(item, userRole))
-    .map(item => ({
+    .filter((item) => checkMenuPermission(item, userRole))
+    .map((item) => ({
       key: item.key,
       label: item.label,
-      title: item.title
-    }));
+      title: item.title,
+    }))
 })
 
 // 登录处理
 const handleLogin = () => {
   // 包含回调 如果是从其他页面跳转过来的 则需要在登录成功后跳转回该页面
-  const redirect = router.currentRoute.value.fullPath;
+  const redirect = router.currentRoute.value.fullPath
   if (!redirect.includes('/login') && !redirect.includes('/register')) {
-    router.push('/auth/login?redirect=' + redirect);
+    router.push('/auth/login?redirect=' + redirect)
   }
 }
 
 const handleMenuClick = (menuInfo: { key: string }) => {
-  const key = menuInfo.key;
-  selectedKeys.value = [key];
-  doJump(key);
+  const key = menuInfo.key
+  selectedKeys.value = [key]
+  doJump(key)
 }
 
 const handleLogout = async () => {
-  await doLogout();
-  loginUserStore.logout();
-  router.push('/auth/login');
-  message.success('退出登录成功');
+  await doLogout()
+  loginUserStore.logout()
+  router.push('/auth/login')
+  message.success('退出登录成功')
 }
 
 const handleProfileClick = () => {
-  router.push('/user/profile');
+  router.push('/user/profile')
 }
 </script>
 

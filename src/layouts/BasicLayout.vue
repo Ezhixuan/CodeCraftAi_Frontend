@@ -1,7 +1,7 @@
 <template>
   <a-layout class="basic-layout">
     <!-- 顶部导航栏 -->
-    <a-layout-header class="header">
+    <a-layout-header v-if="showLayout" class="header">
       <GlobalHeader />
     </a-layout-header>
 
@@ -11,7 +11,7 @@
     </a-layout-content>
 
     <!-- 底部版权信息 -->
-    <a-layout-footer class="footer">
+    <a-layout-footer v-if="showLayout" class="footer">
       <GlobalFooter />
     </a-layout-footer>
   </a-layout>
@@ -20,6 +20,14 @@
 <script setup lang="ts">
 import GlobalHeader from '../components/GlobalHeader.vue'
 import GlobalFooter from '../components/GlobalFooter.vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+const showLayout = computed(() => {
+  return route.meta.hideLayout !== true
+})
 </script>
 
 <style scoped>

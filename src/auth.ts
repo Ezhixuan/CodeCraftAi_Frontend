@@ -6,8 +6,6 @@ let firstLoading = true
 
 router.beforeEach(async (to, from, next) => {
   const toUrl = to.fullPath
-  console.log('firstLoading', firstLoading)
-  console.log('toUrl', toUrl, to)
   if (toUrl.startsWith('/admin')) {
     const loginUserStore = useLoginUserStore()
     if (firstLoading) {

@@ -1,45 +1,45 @@
 <template>
-  <div class="auth-container">
-    <!-- 背景组件 -->
-    <AuthBackground />
+  <!-- 背景组件 -->
+  <CommonBackground>
+    <div class="auth-container">
+      <!-- 主要内容区域 -->
+      <div class="auth-content">
+        <!-- 滑动容器 -->
+        <div class="slide-container">
+          <!-- 内容包装器 -->
+          <div class="content-wrapper" :class="{ 'show-register': isRegisterMode }">
+            <!-- 登录页面 -->
+            <div class="auth-panel login-panel">
+              <!-- 左侧品牌区域 -->
+              <BrandSection :show-stats="false" :show-testimonial="false" />
 
-    <!-- 主要内容区域 -->
-    <div class="auth-content">
-      <!-- 滑动容器 -->
-      <div class="slide-container">
-        <!-- 内容包装器 -->
-        <div class="content-wrapper" :class="{ 'show-register': isRegisterMode }">
-          <!-- 登录页面 -->
-          <div class="auth-panel login-panel">
-            <!-- 左侧品牌区域 -->
-            <BrandSection :show-stats="false" :show-testimonial="false" />
-
-            <!-- 右侧登录表单 -->
-            <div class="form-section">
-              <LoginForm @switch-to-register="switchToRegister" />
-            </div>
-          </div>
-
-          <!-- 注册页面 -->
-          <div class="auth-panel register-panel">
-            <!-- 左侧注册表单 -->
-            <div class="form-section">
-              <RegisterForm @switch-to-login="switchToLogin" />
+              <!-- 右侧登录表单 -->
+              <div class="form-section">
+                <LoginForm @switch-to-register="switchToRegister" />
+              </div>
             </div>
 
-            <!-- 右侧品牌区域 -->
-            <BrandSection :show-stats="true" :show-testimonial="true" />
+            <!-- 注册页面 -->
+            <div class="auth-panel register-panel">
+              <!-- 左侧注册表单 -->
+              <div class="form-section">
+                <RegisterForm @switch-to-login="switchToLogin" />
+              </div>
+
+              <!-- 右侧品牌区域 -->
+              <BrandSection :show-stats="true" :show-testimonial="true" />
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </CommonBackground>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AuthBackground from '@/components/AuthBackground.vue'
+import CommonBackground from '@/components/CommonBackgroundComponent.vue'
 import BrandSection from '@/views/user/auth/components/BrandSection.vue'
 import LoginForm from '@/views/user/auth/components/LoginForm.vue'
 import RegisterForm from '@/views/user/auth/components/RegisterForm.vue'
@@ -59,7 +59,7 @@ const switchToLogin = () => {
   // 更新 URL 但不刷新页面，保留查询参数
   router.replace({
     path: '/auth/login',
-    query: route.query
+    query: route.query,
   })
 }
 
@@ -71,7 +71,7 @@ const switchToRegister = () => {
   // 更新 URL 但不刷新页面，保留查询参数
   router.replace({
     path: '/auth/register',
-    query: route.query
+    query: route.query,
   })
 }
 
@@ -104,6 +104,7 @@ onMounted(() => {
   padding: 0;
   margin: 0;
   width: 100%;
+  z-index: 1;
 }
 
 .auth-content {
@@ -127,7 +128,7 @@ onMounted(() => {
 .content-wrapper {
   display: flex;
   width: 200%;
-  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .content-wrapper.show-register {
@@ -150,8 +151,6 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
 }
-
-
 
 /* 响应式设计 */
 @media (max-width: 768px) {

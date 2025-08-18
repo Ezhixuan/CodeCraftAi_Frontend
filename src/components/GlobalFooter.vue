@@ -2,7 +2,9 @@
   <div class="global-footer">
     <div class="footer-content">
       <p class="copyright">
-        <a href="https://blog.ezhixuan.xyz" target="_blank">Copyright ©Ezhixuan2025 - All rights reserved</a>
+        <a href="https://blog.ezhixuan.xyz" target="_blank"
+          >Copyright ©Ezhixuan2025 - All rights reserved</a
+        >
       </p>
     </div>
   </div>

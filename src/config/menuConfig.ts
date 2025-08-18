@@ -1,4 +1,4 @@
-import type { MenuItem } from '@/components/menu'
+import type { MenuItem } from '@/config/menu'
 import router from '@/router'
 
 /**

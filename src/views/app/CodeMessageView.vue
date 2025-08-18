@@ -1,100 +1,229 @@
 <template>
-  <div class="code-message-container">
+  <div class="code-message-view" :key="currentAppId">
+    <AppNavBar
+      v-if="sysAppInfo"
+      :sys-app-info="sysAppInfo"
+      :is-owner="isOwner"
+      @logoMouseOver="handleLogoMouseOver"
+    />
+    <div class="code-message-container">
+      <a-drawer
+        :open="isDrawerVisible"
+        :closable="false"
+        placement="left"
+        :get-container="false"
+        @close="handleLogoMouseLeave"
+        :style="{ position: 'absolute' }"
+      >
+        <div class="drawer-content">
+          <!-- 顶部区域：新建应用和跳转首页 -->
+          <div class="drawer-header">
+            <a-space direction="vertical" size="small" style="width: 100%">
+              <a-button type="primary" block @click="handleCreateApp">
+                <template #icon><PlusOutlined /></template>
+                新建应用
+              </a-button>
+            </a-space>
+          </div>
 
-    <!-- 主要内容区域 -->
-    <div class="main-content">
-      <!-- 左侧区域：对话式交互 -->
-      <div class="left-panel">
-        <!-- 对话区域 -->
-        <div class="chat-section">
-          <div class="chat-header">
-            <h3>与 AI 对话</h3>
-            <div class="status-indicator">
-              <a-spin v-if="isGenerating" size="small" />
-              <span v-else class="status-text">{{ generatedCode ? '生成完成' : '等待生成' }}</span>
+          <!-- 中间区域：应用列表 -->
+          <div class="drawer-body" @scroll="handleAppListScroll">
+            <div class="app-list-section">
+              <h4>我的应用</h4>
+              <a-spin :spinning="appListLoading">
+                <div v-if="appList.length === 0 && !appListLoading" class="empty-state">
+                  <div class="empty-icon">📱</div>
+                  <p>暂无应用</p>
+                  <a-button type="link" @click="handleCreateApp">创建第一个应用</a-button>
+                </div>
+                <div v-else :key="componentKey">
+                  <a-list :data-source="appList" size="small">
+                    <template #renderItem="{ item }">
+                      <a-list-item class="app-item" @click="handleAppClick(item)">
+                        <a-list-item-meta>
+                          <template #avatar>
+                            <a-avatar :src="item.cover" shape="square">
+                              {{ item.name?.charAt(0) || 'A' }}
+                            </a-avatar>
+                          </template>
+                          <template #title>
+                            <div class="app-title">{{ item.name }}</div>
+                          </template>
+                          <template #description>
+                            <div class="app-time">{{ formatAppTime(item.updateTime) }}</div>
+                          </template>
+                        </a-list-item-meta>
+                      </a-list-item>
+                    </template>
+                  </a-list>
+
+                  <!-- 加载更多指示器 -->
+                  <div v-if="appListLoadingMore" class="load-more-indicator">
+                    <a-spin size="small" />
+                    <span>加载中...</span>
+                  </div>
+
+                  <!-- 没有更多数据指示器 -->
+                  <div v-if="!hasMoreApps && appList.length > 0" class="no-more-indicator">
+                    没有更多应用了
+                  </div>
+                </div>
+              </a-spin>
             </div>
           </div>
 
-          <!-- 对话消息列表 -->
-          <div class="chat-container">
-            <div class="message-list" ref="messageListRef">
-              <!-- 欢迎消息 -->
-              <div v-if="!userMessage && !generatedCode" class="message ai-message welcome-message">
-                <div class="message-avatar">
-                  <img src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
-                </div>
-                <div class="message-content">
-                  <MarkdownRenderer :content="welcomeMessage" />
-                </div>
-              </div>
-
-              <!-- 用户消息 -->
-              <div v-if="userMessage" class="message user-message">
-                <div class="message-content">
-                  <MarkdownRenderer :content="userMessage" />
-                </div>
-                <div class="message-avatar">
-                  <div class="user-avatar">👤</div>
-                </div>
-              </div>
-
-              <!-- AI 回复消息 -->
-              <div v-if="userMessage" class="message ai-message">
-                <div class="message-avatar">
-                  <img src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
-                </div>
-                <div class="message-content">
-                  <div v-if="isGenerating && !generatedCode" class="generating-indicator">
-                    <a-spin size="small" />
-                    <span>AI 正在思考您的需求...</span>
-                  </div>
-                  <div v-else-if="generatedCode" class="markdown-content code-display">
-                    <MarkdownRenderer :content="generatedCode" />
-                  </div>
-                  <div v-else-if="!isGenerating" class="markdown-content">
-                    <p>我已经收到您的需求，正在为您生成代码...</p>
-                  </div>
-                </div>
+          <!-- 底部区域：用户信息 -->
+          <div class="drawer-footer">
+            <div v-if="loginUser.isLogin()" class="user-info">
+              <a-avatar :src="loginUser.loginUser.avatar" size="small">
+                {{ loginUser.loginUser.name?.charAt(0) || 'U' }}
+              </a-avatar>
+              <div class="user-details">
+                <div class="user-name">{{ loginUser.loginUser.name }}</div>
+                <div class="user-role">{{ getRoleText(loginUser.loginUser.role) }}</div>
               </div>
             </div>
-
-            <!-- 输入区域 -->
-            <div class="chat-input-area">
-              <textarea v-model="newMessage" class="chat-input" placeholder="请描述您的需求，例如：创建一个待办事项应用..."
-                :disabled="isGenerating" @keydown.ctrl.enter="sendMessage" rows="3"></textarea>
-              <button class="send-button" :disabled="!newMessage.trim() || isGenerating" @click="sendMessage">
-                {{ isGenerating ? '生成中...' : '发送' }}
-              </button>
-            </div>
-            <div class="chat-tips">
-              <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 快速发送
+            <div v-else class="login-prompt">
+              <a-button type="link" @click="handleLogin">登录</a-button>
             </div>
           </div>
         </div>
-      </div>
+      </a-drawer>
+      <a-alert
+        v-if="errorMessage"
+        :message="errorMessage"
+        type="error"
+        closable
+        @close="clearError"
+        class="error-alert"
+      />
 
-      <!-- 右侧：预览区域 -->
-      <div class="right-panel">
-        <div class="preview-section">
-          <div class="preview-header">
-            <h3>应用预览</h3>
-            <div class="preview-actions">
-              <a-button type="primary" :loading="isDeploying" :disabled="!canPreview" @click="handlePreview"
-                size="small">
-                {{ previewButtonText }}
-              </a-button>
+      <div class="main-content">
+        <div class="left-panel">
+          <div class="chat-section">
+            <div class="chat-header">
+              <div class="header-left">
+                <h3>与 AI 对话</h3>
+                <div class="conversation-info" v-if="conversationStats.messageCount > 0">
+                  <span>{{ conversationStats.messageCount }} 条对话</span>
+                  <span v-if="conversationStats.lastGenerationTime">
+                    耗时 {{ conversationStats.lastGenerationTime }}s
+                  </span>
+                </div>
+              </div>
+              <div class="status-indicator">
+                <a-spin v-if="isGenerating" size="small" />
+                <a-tag :color="statusColor">{{ statusText }}</a-tag>
+              </div>
+            </div>
+
+            <div class="chat-container">
+              <div class="message-list" ref="messageListRef">
+                <div v-if="messages.length === 0" class="message ai-message">
+                  <div class="message-avatar">
+                    <img src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
+                  </div>
+                  <div class="message-content">
+                    <MarkdownRenderer :content="welcomeMessage" />
+                  </div>
+                </div>
+
+                <div
+                  v-for="(message, index) in messages"
+                  :key="message.id"
+                  :class="['message', message.type === 'user' ? 'user-message' : 'ai-message']"
+                >
+                  <div class="message-avatar">
+                    <div v-if="message.type === 'user'" class="user-avatar">👤</div>
+                    <img v-else src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
+                  </div>
+
+                  <div class="message-content">
+                    <MarkdownRenderer :content="message.content" />
+                    <div v-if="message.isGenerating" class="generating-indicator">
+                      <a-spin size="small" />
+                      <span>{{ generatingText }}</span>
+                    </div>
+                    <div
+                      class="message-actions"
+                      v-if="message.type === 'ai' && !message.isGenerating && message.content"
+                    >
+                      <a-button size="small" type="text" @click="copyToClipboard(message.content)">
+                        <template #icon><CopyOutlined /></template>
+                        复制代码
+                      </a-button>
+                      <a-button size="small" type="text" @click="regenerateResponse(index)">
+                        <template #icon><ReloadOutlined /></template>
+                        重新生成
+                      </a-button>
+                    </div>
+                    <div class="message-time" v-if="!message.isGenerating">
+                      {{ formatTime(message.timestamp) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="isOwner" class="chat-input-area">
+                <InputComponent
+                  v-model="newMessage"
+                  fontSize="16px"
+                  :required="true"
+                  :show-submit-button="true"
+                  submit-button-text="发送"
+                  :enable-typewriter="true"
+                  :placeholder-array="['您正在与CodeCraft进行对话，您可以描述您的需求']"
+                  background-color="#000000"
+                  :multiline="true"
+                  :height="200"
+                  :disabled="isGenerating"
+                  @submit="sendMessage"
+                />
+              </div>
             </div>
           </div>
-          <div class="preview-content">
-            <div v-if="isDeploying" class="deploying-placeholder">
-              <a-spin size="large" tip="正在部署应用..." />
-              <p class="deploy-tip">部署完成后即可预览您的应用</p>
+        </div>
+
+        <div class="right-panel">
+          <div class="preview-section">
+            <div class="preview-header">
+              <h3>应用预览</h3>
+              <div class="preview-actions">
+                <a-button v-if="previewUrl" size="small" type="text" @click="openInNewTab">
+                  <template #icon><ExportOutlined /></template>
+                  新窗口打开
+                </a-button>
+                <a-button
+                  type="primary"
+                  :loading="isDeploying"
+                  :disabled="!canPreview"
+                  @click="handlePreview"
+                  size="small"
+                >
+                  <template #icon><RocketOutlined /></template>
+                  {{ previewButtonText }}
+                </a-button>
+              </div>
             </div>
-            <div v-else-if="previewUrl" class="preview-iframe-container">
-              <iframe :src="previewUrl" frameborder="0" class="preview-iframe" @load="handleIframeLoad"></iframe>
-            </div>
-            <div v-else class="preview-empty">
-              <div class="preview-empty-content">
+            <div class="preview-content">
+              <div v-if="isDeploying" class="deploying-placeholder">
+                <a-spin size="large" />
+                <h4>正在部署应用...</h4>
+                <p>{{ deployProgress }}</p>
+                <a-progress :percent="deployPercent" :show-info="false" />
+              </div>
+              <div v-else-if="previewUrl" class="preview-iframe-container">
+                <div v-if="iframeLoading" class="iframe-loading">
+                  <a-spin size="large" tip="加载预览中..." />
+                </div>
+                <iframe
+                  :src="previewUrl"
+                  class="preview-iframe"
+                  @load="iframeLoading = false"
+                  :style="{ opacity: iframeLoading ? 0 : 1 }"
+                ></iframe>
+              </div>
+              <div v-else class="preview-empty">
                 <div class="preview-icon">🚀</div>
                 <h4>等待预览</h4>
                 <p>代码生成完成后，点击预览按钮查看应用效果</p>
@@ -108,307 +237,601 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { message } from 'ant-design-vue'
+import {
+  CopyOutlined,
+  ReloadOutlined,
+  ExportOutlined,
+  RocketOutlined,
+  PlusOutlined,
+} from '@ant-design/icons-vue'
+import AppNavBar from '@/views/app/components/AppNavBar.vue'
+import MarkdownRenderer from '@/components/MarkdownComponent.vue'
+import InputComponent from '@/components/InputComponent.vue'
 import { deployPreview } from '@/api/jingtaiziyuanbushukongzhiqi'
+import { getInfo, getList } from '@/api/yingyongkongzhiqi'
+import { useLoginUserStore } from '@/stores/loginUser'
 import { BASE_URL } from '@/config/apiConfig'
 
-// 状态管理
-const appId = ref()
-const userMessage = ref('')
+// --- Type Definitions ---
+interface ChatMessage {
+  id: string
+  type: 'user' | 'ai'
+  content: string
+  timestamp: number
+  isGenerating?: boolean
+}
+
+// --- Core State Management ---
+const appId = ref<string | null>(null)
+const sysAppInfo = ref<API.AppInfoCommonResVo>()
+const isOwner = ref(false)
+const messages = ref<ChatMessage[]>([])
 const newMessage = ref('')
-const generatedCode = ref('')
+const errorMessage = ref('')
 const isGenerating = ref(false)
 const isDeploying = ref(false)
+const iframeLoading = ref(true)
 const previewUrl = ref('')
 const canPreview = ref(false)
+const deployPercent = ref(0)
+const deployProgress = ref('准备部署环境...')
 const eventSource = ref<EventSource | null>(null)
-let connectionTimeout: number | null = null
 const messageListRef = ref<HTMLElement | null>(null)
+const currentAppId = ref('0')
 
+// --- Timers and Intervals ---
+let connectionTimeout: ReturnType<typeof setTimeout> | null = null
+let deployTimer: ReturnType<typeof setTimeout> | null = null
+let generatingTextTimer: ReturnType<typeof setInterval> | null = null
+
+// --- Router and Stores ---
 const route = useRoute()
 const router = useRouter()
+const loginUser = useLoginUserStore()
 
-// 欢迎消息
+// --- Drawer State ---// 应用列表相关状态
+const appList = ref<API.AppInfoCommonResVo[]>([])
+const appListLoading = ref(false)
+const appListLoadingMore = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const hasMoreApps = ref(true)
+const componentKey = ref(0) // 用于强制重新渲染组件 --- Static Content ---
 const welcomeMessage = `# 👋 欢迎使用 CodeCraftAI
+我是您的 AI 编程助手，可以帮助您快速生成、优化和调试代码。请在下方输入您的需求！`
+const generatingTexts = [
+  'AI 正在分析您的需求...',
+  'AI 正在设计应用架构...',
+  'AI 正在编写核心代码...',
+  'AI 正在优化代码结构...',
+]
+const generatingTextIndex = ref(0)
 
-我是您的 AI 编程助手，可以帮助您：
+// --- Computed Properties ---
+const generatingText = computed(
+  () => generatingTexts[generatingTextIndex.value % generatingTexts.length],
+)
+const previewButtonText = computed(() =>
+  isDeploying.value ? '部署中...' : previewUrl.value ? '重新预览' : '立即预览',
+)
+const statusText = computed(() => {
+  if (isGenerating.value) return '生成中'
+  if (canPreview.value) return '可预览'
+  if (messages.value.length === 0) return '等待输入'
+  return '已完成'
+})
+const statusColor = computed(() => {
+  if (isGenerating.value) return 'processing'
+  if (canPreview.value) return 'success'
+  return 'default'
+})
+const conversationStats = computed(() => {
+  const userMessages = messages.value.filter((m) => m.type === 'user')
+  const lastUserMessage = userMessages.pop()
+  let lastGenerationTime = null
 
-- 🚀 **快速生成代码** - 根据需求描述生成完整的应用代码
-- 💡 **智能优化** - 提供代码优化建议和最佳实践
-- 🔧 **问题解决** - 帮助调试和修复代码问题
-- 📚 **技术指导** - 解答编程相关问题
+  if (lastUserMessage) {
+    const subsequentAiMessage = messages.value.find(
+      (m) => m.type === 'ai' && m.timestamp > lastUserMessage.timestamp && !m.isGenerating,
+    )
+    if (subsequentAiMessage) {
+      lastGenerationTime = Math.round(
+        (subsequentAiMessage.timestamp - lastUserMessage.timestamp) / 1000,
+      )
+    }
+  }
 
-请在下方输入您的需求，我将为您生成高质量的代码！`
-
-const previewButtonText = computed(() => {
-  if (isDeploying.value) return '部署中...'
-  if (previewUrl.value) return '重新预览'
-  return '立即预览'
+  return {
+    messageCount: userMessages.length + (lastUserMessage ? 1 : 0),
+    lastGenerationTime,
+  }
 })
 
-// 初始化
-onMounted(() => {
-  const id = route.query.appId
-  const message = route.query.message
-  const action = route.query.action
+// --- Utility Functions ---
+const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2)
+const formatTime = (timestamp: number) =>
+  new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messageListRef.value) {
+      messageListRef.value.scrollTop = messageListRef.value.scrollHeight
+    }
+  })
+}
 
-  if (!id || !message) {
+// --- Drawer Functions ---
+/**
+ * 获取应用列表 - 支持分页加载
+ * @param isLoadMore 是否为加载更多模式
+ */
+const fetchAppList = async (isLoadMore = false) => {
+  if (!loginUser.isLogin()) return
+
+  if (!isLoadMore) {
+    appListLoading.value = true
+    appListLoadingMore.value = false
+    currentPage.value = 1
+    hasMoreApps.value = true
+  } else {
+    if (appListLoadingMore.value || !hasMoreApps.value) {
+      return // 防止重复加载或已无更多数据
+    }
+    appListLoadingMore.value = true
+  }
+
+  try {
+    const queryReq: API.AppQueryReqVo = {
+      pageNo: currentPage.value,
+      pageSize: pageSize.value,
+      orderBy: 'updateTime desc',
+    }
+    const response = await getList({ queryReqVo: queryReq })
+    const newApps = response.data.data?.list || []
+
+    if (isLoadMore) {
+      // 加载更多：追加数据
+      appList.value = [...appList.value, ...newApps]
+    } else {
+      // 首次加载：替换数据
+      appList.value = newApps
+    }
+
+    // 更新分页状态
+    const totalPage = Number(response.data.data?.totalPage || 1)
+    hasMoreApps.value = newApps.length === pageSize.value && currentPage.value < totalPage
+    if (hasMoreApps.value) {
+      currentPage.value += 1
+    }
+  } catch (error) {
+    console.error('获取应用列表失败:', error)
+    message.error('获取应用列表失败')
+  } finally {
+    appListLoading.value = false
+    appListLoadingMore.value = false
+  }
+}
+
+/**
+ * 滚动监听函数，实现滚动到底部时加载更多
+ */
+const handleAppListScroll = (event: Event) => {
+  const target = event.target as HTMLElement
+  if (!target || !hasMoreApps.value || appListLoadingMore.value) return
+
+  const scrollTop = target.scrollTop
+  const scrollHeight = target.scrollHeight
+  const clientHeight = target.clientHeight
+
+  // 当滚动到距离底部50px时触发加载更多
+  if (scrollTop + clientHeight >= scrollHeight - 50) {
+    fetchAppList(true)
+  }
+}
+
+/**
+ * 处理新建应用点击事件
+ */
+const handleCreateApp = () => {
+  router.push('/')
+  isDrawerVisible.value = false
+}
+
+/**
+ * 处理应用项点击事件
+ */
+const handleAppClick = async (app: API.AppInfoCommonResVo) => {
+  if (app.id) {
+    await router.push(`/app/code-message?appId=${app.id}`)
+    appId.value = app.id
+    await getAppInfo(app.id)
+    isDrawerVisible.value = false
+
+    // 使用componentKey强制重新渲染组件，避免Pinia状态丢失
+    componentKey.value += 1
+    currentAppId.value += 1
+
+    // 使用nextTick确保路由跳转完成后重新获取应用列表
+    await nextTick()
+    fetchAppList(false)
+  }
+}
+
+/**
+ * 处理登录点击事件
+ */
+const handleLogin = () => {
+  router.push('/auth/login?redirect=/app/code-message?appId=' + appId.value)
+  isDrawerVisible.value = false
+}
+
+/**
+ * 格式化应用时间显示
+ */
+const formatAppTime = (timeStr?: string) => {
+  if (!timeStr) return ''
+  const date = new Date(timeStr)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (days === 0) {
+    return '今天'
+  } else if (days === 1) {
+    return '昨天'
+  } else if (days < 7) {
+    return `${days}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN')
+  }
+}
+
+/**
+ * 获取角色文本显示
+ */
+const getRoleText = (role?: string) => {
+  switch (role) {
+    case 'ADMIN':
+      return '管理员'
+    case 'USER':
+      return '用户'
+    case 'GUEST':
+      return '访客'
+    default:
+      return '用户'
+  }
+}
+
+// --- Application Initialization ---
+onMounted(async () => {
+  const id = route.query.appId as string
+  if (!id) {
     router.push('/')
     return
   }
+  appId.value = id
+  currentAppId.value = id
+  await getAppInfo(id)
 
-  appId.value = id as string
-  userMessage.value = message as string
+  const messageContent = route.query.message as string
+  const shouldStartGeneration = route.query.action === 'true'
 
-  // 开始生成代码
-  if (action === "true") {
-    startCodeGeneration()
-  }
-
-})
-
-// 清理
-onUnmounted(() => {
-  if (eventSource.value) {
-    eventSource.value.close()
-    eventSource.value = null
-  }
-  if (connectionTimeout) {
-    clearTimeout(connectionTimeout)
+  if (shouldStartGeneration && messageContent && isOwner.value) {
+    const userMsg: ChatMessage = {
+      id: generateId(),
+      type: 'user',
+      content: messageContent,
+      timestamp: Date.now(),
+    }
+    messages.value.push(userMsg)
+    startCodeGeneration(messageContent)
   }
 })
 
-// 关闭SSE连接的统一方法
-const closeConnection = () => {
-  console.log('正在关闭SSE连接')
-  isGenerating.value = false
-  canPreview.value = true
-
-  // 清除超时定时器
-  if (connectionTimeout) {
-    clearTimeout(connectionTimeout)
-    connectionTimeout = null
-  }
-
-  // 延迟滚动确保最后内容显示
-  setTimeout(() => {
-    scrollToBottom()
-  }, 100)
-
-  if (eventSource.value) {
-    eventSource.value.close()
-    eventSource.value = null
-    console.log('SSE连接已关闭')
-  }
-}
-
-// 开始代码生成
-const startCodeGeneration = async () => {
-  if (!appId.value || !userMessage.value) return
-
-  isGenerating.value = true
-  generatedCode.value = ''
-
+async function getAppInfo(id: string) {
   try {
-    // 使用 EventSource 进行 SSE 连接
-    // 使用配置文件中的基础URL拼接完整的后端服务地址
-    const url = `${BASE_URL}/app/generate/code?message=${encodeURIComponent(userMessage.value)}&appId=${appId.value}`
-    eventSource.value = new EventSource(url, { withCredentials: true })
-
-    // 设置超时机制，5分钟后自动关闭连接
-    connectionTimeout = setTimeout(() => {
-      console.log('SSE连接超时，自动关闭')
-      closeConnection()
-    }, 5 * 60 * 1000) // 5分钟
-
-    // 监听所有可能的结束事件
-    eventSource.value.addEventListener('done', () => {
-      console.log('收到done事件，代码生成完成')
-      closeConnection()
-    }, { once: true })
-
-    // 监听自定义事件（可能是end或finish）
-    eventSource.value.addEventListener('end', () => {
-      console.log('收到end事件，代码生成完成')
-      closeConnection()
-    }, { once: true })
-
-    eventSource.value.addEventListener('finish', () => {
-      console.log('收到finish事件，代码生成完成')
-      closeConnection()
-    }, { once: true })
-
-    // 统一的message事件处理（合并之前的重复逻辑）
-    eventSource.value.onmessage = (event) => {
-      console.log('收到SSE数据:', event.data) // 添加调试日志
-      
-      try {
-        const data = JSON.parse(event.data)
-        console.log('解析后的数据:', data) // 添加调试日志
-
-        // 检查是否是结束标记
-        if (data.type === 'done' || data.event === 'done' || data.status === 'completed') {
-          console.log('在message事件中检测到完成标记:', data)
-          closeConnection()
-          return
-        }
-
-        if (data.d) {
-          console.log('接收到内容片段，长度:', data.d.length) // 添加调试日志
-          // 直接追加内容，立即更新UI
-          generatedCode.value += data.d
-
-          // 立即滚动到底部，提供更流畅的体验
-          nextTick(() => {
-            scrollToBottom()
-          })
-        }
-      } catch (e) {
-        console.error('解析SSE数据失败:', e, '原始数据:', event.data)
-        // 如果解析失败，检查是否是纯文本的结束标记
-        if (event.data === 'done' || event.data === '[DONE]' || event.data === 'END') {
-          console.log('检测到文本结束标记:', event.data)
-          closeConnection()
-        }
-      }
+    const response = await getInfo({ id })
+    if (response.data.data) {
+      sysAppInfo.value = response.data.data
+      isOwner.value = sysAppInfo.value.userId === loginUser.$id
     }
-
-    eventSource.value.onerror = (error) => {
-      console.error('SSE连接错误:', error)
-      closeConnection()
-    }
-
   } catch (error) {
-    console.error('开始代码生成失败:', error)
-    isGenerating.value = false
+    console.error('获取应用信息失败:', error)
+    errorMessage.value = '获取应用信息失败'
   }
 }
 
-// 自动滚动到底部
-/**
- * 自动滚动到代码显示区域底部
- * - 优先选择新布局下的 .code-display 容器
- * - 向下兼容旧布局的 .code-content 容器
- */
-const scrollToBottom = () => {
-  nextTick(() => {
-    const container = messageListRef.value
-    if (container) {
-      container.scrollTop = container.scrollHeight
-    }
-  })
+// --- Lifecycle Management ---
+onUnmounted(() => {
+  cleanup()
+})
+
+function cleanup() {
+  if (eventSource.value) {
+    eventSource.value.close()
+  }
+  if (connectionTimeout) clearTimeout(connectionTimeout)
+  if (deployTimer) clearTimeout(deployTimer)
+  if (generatingTextTimer) clearInterval(generatingTextTimer)
 }
 
-// 处理预览
-const handlePreview = async () => {
+// --- AI Chat & Code Generation ---
+function sendMessage() {
+  const content = newMessage.value.trim()
+  if (!content || isGenerating.value) return
+
+  messages.value.push({
+    id: generateId(),
+    type: 'user',
+    content,
+    timestamp: Date.now(),
+  })
+
+  newMessage.value = ''
+  canPreview.value = false
+  previewUrl.value = ''
+  startCodeGeneration(content)
+}
+
+function startCodeGeneration(messageContent: string) {
+  if (!appId.value) return
+
+  cleanup() // Ensure any previous connection is closed
+  isGenerating.value = true
+  canPreview.value = false
+
+  const aiMessage: ChatMessage = {
+    id: generateId(),
+    type: 'ai',
+    content: '',
+    timestamp: Date.now(),
+    isGenerating: true,
+  }
+  messages.value.push(aiMessage)
+  scrollToBottom()
+
+  // Start generating text animation
+  generatingTextIndex.value = 0
+  generatingTextTimer = setInterval(() => {
+    generatingTextIndex.value++
+  }, 2000)
+
+  const url = `${BASE_URL}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
+  eventSource.value = new EventSource(url, { withCredentials: true })
+
+  connectionTimeout = setTimeout(() => handleGenerationError('生成超时，请重试'), 10 * 60 * 1000) // 10 minutes
+
+  eventSource.value.onmessage = (event) => {
+    if (event.data.includes('[DONE]')) {
+      closeConnection()
+      return
+    }
+    try {
+      const data = JSON.parse(event.data)
+      if (data.d) {
+        aiMessage.content += data.d
+        scrollToBottom()
+      }
+    } catch (e) {
+      console.error('解析SSE数据失败:', event.data, e)
+    }
+  }
+
+  eventSource.value.onerror = () => handleGenerationError('连接错误，请检查网络后重试')
+  eventSource.value.addEventListener('end', closeConnection)
+}
+
+function closeConnection() {
+  isGenerating.value = false
+  if (generatingTextTimer) clearInterval(generatingTextTimer)
+  if (connectionTimeout) clearTimeout(connectionTimeout)
+  if (eventSource.value) eventSource.value.close()
+
+  const lastMessage = messages.value[messages.value.length - 1]
+  if (lastMessage?.type === 'ai' && lastMessage.isGenerating) {
+    lastMessage.isGenerating = false
+    lastMessage.timestamp = Date.now()
+    if (lastMessage.content.trim()) {
+      canPreview.value = true
+    }
+  }
+}
+
+function handleGenerationError(error: string) {
+  errorMessage.value = error
+  isGenerating.value = false
+  messages.value = messages.value.filter((m) => !m.isGenerating)
+  cleanup()
+}
+
+// --- User Interface Actions ---
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    message.success('代码已复制')
+  } catch (err) {
+    console.error(err)
+    message.error('复制失败')
+  }
+}
+
+function regenerateResponse(messageIndex: number) {
+  if (isGenerating.value) return
+  const userMessageIndex = Math.floor(messageIndex / 2)
+  const userMessage = messages.value.filter((m) => m.type === 'user')[userMessageIndex]
+
+  if (userMessage) {
+    messages.value = messages.value.slice(0, messages.value.indexOf(userMessage) + 1)
+    startCodeGeneration(userMessage.content)
+  }
+}
+
+function clearError() {
+  errorMessage.value = ''
+}
+
+function openInNewTab() {
+  if (previewUrl.value) {
+    window.open(previewUrl.value, '_blank')
+  }
+}
+
+// --- Code Preview & Deployment ---
+async function handlePreview() {
   if (!canPreview.value || isDeploying.value) return
+  if (!appId.value) return
 
   isDeploying.value = true
+  iframeLoading.value = true
+  deployPercent.value = 0
+  previewUrl.value = ''
+
+  // Simulate deployment progress
+  const progressSteps = [
+    { percent: 20, text: '准备部署环境...' },
+    { percent: 50, text: '构建应用代码...' },
+    { percent: 80, text: '配置服务器...' },
+  ]
+  let stepIndex = 0
+  const updateProgress = () => {
+    if (stepIndex < progressSteps.length) {
+      const step = progressSteps[stepIndex]
+      deployPercent.value = step.percent
+      deployProgress.value = step.text
+      stepIndex++
+      deployTimer = setTimeout(updateProgress, 800)
+    }
+  }
+  updateProgress()
 
   try {
     const response = await deployPreview({ appId: appId.value })
-    const deployKey = response
-    // 构建预览URL
-    previewUrl.value = `${BASE_URL}/deploy/redirect/${deployKey}`
+    const deployKey = response.data.data
+    if (deployKey) {
+      previewUrl.value = `${BASE_URL}/deploy/redirect/${deployKey}`
+      deployPercent.value = 100
+      deployProgress.value = '部署完成！'
+      message.success('应用部署成功！')
+    } else {
+      throw new Error('Invalid deploy key received')
+    }
   } catch (error) {
     console.error('部署预览出错:', error)
+    message.error('部署失败，请重试')
   } finally {
-    isDeploying.value = false
+    if (deployTimer) clearTimeout(deployTimer)
+    setTimeout(() => {
+      isDeploying.value = false
+    }, 1000)
   }
 }
 
-// 处理iframe加载
-const handleIframeLoad = () => {
-  console.log('预览加载完成')
+// --- Drawer State ---
+const isDrawerVisible = ref(false)
+
+const handleLogoMouseOver = () => {
+  isDrawerVisible.value = true
+  // 当抽屉打开时获取应用列表
+  if (loginUser.isLogin()) {
+    fetchAppList()
+  }
 }
 
-// 发送消息给AI
-const sendMessage = () => {
-  if (!newMessage.value.trim() || isGenerating.value) return
-
-  // 更新用户消息
-  userMessage.value = newMessage.value
-
-  // 重置生成状态
-  generatedCode.value = ''
-  canPreview.value = false
-  previewUrl.value = ''
-
-  // 开始生成代码
-  startCodeGeneration()
-
-  // 清空输入框
-  newMessage.value = ''
-
-  // 滚动到底部显示新消息
-  nextTick(() => {
-    scrollToBottom()
-  })
+const handleLogoMouseLeave = () => {
+  isDrawerVisible.value = false
 }
+
+// --- Watchers ---
+watch(() => messages.value.length, scrollToBottom)
 </script>
 
 <style scoped>
-.code-message-container {
-  height: 84vh;
-  background: #f7f8fa;
-  color: #333;
+/* General Layout */
+.code-message-view {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   overflow: hidden;
-  /* 防止外层滚动 */
 }
 
-/* 主体左右5:5布局 */
-.main-content {
-  display: flex;
-  gap: 24px;
-  padding: 16px;
-  /* 减去 BasicLayout 的 padding 和 gap */
-  height: calc(100vh - 64px - 48px - 24px);
-  /* 100vh - header高度 - footer高度 - layout的padding */
+.code-message-container {
   flex: 1;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+  position: relative; /* This is crucial for the drawer's positioning */
 }
 
-/* 左侧面板 */
+.error-alert {
+  margin: 16px;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+/* Left & Right Panels */
 .left-panel {
   flex: 1;
-  /* 改为flex: 1以实现动态缩放 */
   display: flex;
   flex-direction: column;
   min-width: 0;
-  /* 防止内容溢出 */
 }
 
-/* 对话区域 */
-.chat-section {
+.right-panel {
+  width: 45%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chat & Preview Sections */
+.chat-section,
+.preview-section {
   flex: 1;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: 100%;
 }
 
-.chat-header {
+.chat-header,
+.preview-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
 }
 
-.chat-header h3 {
+.chat-header h3,
+.preview-header h3 {
   margin: 0;
+  color: #333333;
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+}
+
+/* Chat Header Specifics */
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conversation-info {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #666666;
 }
 
 .status-indicator {
@@ -417,300 +840,187 @@ const sendMessage = () => {
   gap: 8px;
 }
 
-.status-text {
-  font-size: 14px;
-  color: #6b7280;
-}
-
+/* Message List */
 .chat-container {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #f7f8fa;
 }
 
 .message-list {
   flex: 1;
-  padding: 20px;
+  padding: 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   scroll-behavior: smooth;
 }
 
+.message-list::-webkit-scrollbar {
+  width: 6px;
+}
+.message-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.message-list::-webkit-scrollbar-thumb {
+  background: #ccc;
+}
+.message-list::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Individual Messages */
 .message {
   display: flex;
   gap: 12px;
-  max-width: 90%;
-  align-items: flex-start;
+  max-width: 100%;
 }
 
-/* 用户消息样式 */
 .user-message {
-  align-self: flex-end;
   flex-direction: row-reverse;
 }
-
-.user-message .message-content {
-  background: #3b82f6;
-  color: white;
-  border-radius: 12px 12px 0 12px;
-}
-
-/* AI消息样式 */
 .ai-message {
-  align-self: flex-start;
+  flex-direction: row;
 }
 
-.ai-message .message-content {
-  background: #ffffff;
-  color: #374151;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px 12px 12px 0;
+.message-avatar .ai-avatar,
+.message-avatar .user-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.user-avatar {
+  background: #007bff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 16px;
 }
 
 .message-content {
   padding: 12px 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  font-size: 14px;
-  line-height: 1.6;
-  word-break: break-word;
-  /* 修复长单词溢出问题 */
-  white-space: pre-wrap;
-  /* 保证长内容能换行 */
-  overflow-wrap: break-word;
-  /* 确保长内容能够换行 */
-  max-width: 100%;
-  /* 防止内容超出容器宽度 */
-  overflow-x: hidden;
-  /* 隐藏横向滚动条 */
+  border: 1px solid #e0e0e0;
+  position: relative;
 }
 
-/* 欢迎消息特殊样式 */
-.welcome-message .message-content {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+.user-message .message-content {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+  margin-left: auto;
+  max-width: 80%;
 }
 
-/* 头像样式 */
-.message-avatar {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+.ai-message .message-content {
+  background: #f8f9fa;
+  max-width: 90%;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #666666;
+  margin-top: 6px;
+}
+.user-message .message-time {
+  color: rgba(255, 255, 255, 0.8);
+  text-align: right;
+}
+
+.message-actions {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  overflow: hidden;
+  gap: 6px;
+  margin-top: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-.ai-avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.message:hover .message-actions {
+  opacity: 1;
 }
 
-.user-avatar {
-  width: 100%;
-  height: 100%;
-  background: #dbeafe;
-  color: #3b82f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 500;
-}
-
-/* 生成指示器 */
 .generating-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6b7280;
+  color: #666666;
   font-style: italic;
-  padding: 8px 0;
+  margin-top: 8px;
 }
 
-/* Markdown内容样式 */
-.markdown-content {
-  line-height: 1.7;
-  font-size: 14px;
-  word-break: break-word;
-  /* 确保内容不会溢出 */
-  white-space: normal;
-  /* 覆盖 pre 标签的样式 */
-  overflow-wrap: break-word;
-  /* 确保长内容能够换行 */
-  max-width: 100%;
-  /* 防止内容超出容器宽度 */
-}
-
-.user-message .markdown-content :deep(h1),
-.user-message .markdown-content :deep(h2),
-.user-message .markdown-content :deep(h3) {
-  color: white;
-}
-
-.ai-message .markdown-content :deep(code) {
-  background: rgba(0, 0, 0, 0.05);
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-family: 'SF Mono', 'Monaco', monospace;
-  font-size: 0.9em;
-}
-
-.user-message .markdown-content :deep(code) {
-  background: rgba(255, 255, 255, 0.15);
-  color: #e0e0e0;
-}
-
-
-/* 聊天输入区域 */
+/* Input Area */
 .chat-input-area {
-  padding: 16px 20px;
-  border-top: 1px solid #e5e7eb;
-  background: #fff;
+  padding: 16px;
+  border-top: 1px solid #e0e0e0;
+  background: #ffffff;
 }
 
-.chat-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-  resize: none;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  font-family: inherit;
-}
-
-.chat-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.chat-input-area {
-  position: relative;
-}
-
-.send-button {
-  position: absolute;
-  right: 30px;
-  bottom: 28px;
-  padding: 6px 12px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.send-button:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.send-button:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-
-.chat-tips {
-  padding-top: 8px;
-  font-size: 12px;
-  color: #9ca3af;
-  text-align: right;
-  padding-right: 4px;
-}
-
-.chat-tips kbd {
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 11px;
-  color: #4b5563;
-  font-family: monospace;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-}
-
-/* 右侧面板 */
-.right-panel {
-  flex: 1;
-  /* 改为flex: 1以实现动态缩放 */
+/* Preview Area */
+.preview-actions {
   display: flex;
-  flex-direction: column;
-  min-width: 0;
-  /* 防止内容溢出 */
-}
-
-.preview-section {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.preview-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fff;
-}
-
-.preview-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
+  gap: 8px;
 }
 
 .preview-content {
   flex: 1;
-  overflow: hidden;
   position: relative;
-  background: #f7f8fa;
+  overflow: hidden;
+  background: #f8f9fa;
 }
 
 .preview-iframe-container {
   width: 100%;
   height: 100%;
+  position: relative;
+}
+
+.iframe-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 10;
 }
 
 .preview-iframe {
   width: 100%;
   height: 100%;
   border: none;
+  background: white;
+  transition: opacity 0.3s ease;
 }
 
 .deploying-placeholder,
 .preview-empty {
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  color: #6b7280;
   text-align: center;
-  padding: 20px;
+  padding: 32px;
+  color: #666;
 }
 
-.deploy-tip {
+.deploying-placeholder h4,
+.preview-empty h4 {
+  margin: 12px 0 8px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.deploying-placeholder .ant-progress {
+  width: 100%;
+  max-width: 250px;
   margin-top: 16px;
-  color: #6b7280;
-  font-size: 14px;
 }
 
 .preview-icon {
@@ -719,30 +1029,132 @@ const sendMessage = () => {
   opacity: 0.6;
 }
 
-.preview-empty-content h4 {
-  margin: 0 0 8px;
-  font-size: 16px;
+/* Drawer Styles */
+.drawer-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.drawer-header {
+  margin-bottom: 16px;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.app-list-section h4 {
+  margin-bottom: 12px;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 24px 0;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.app-item {
+  cursor: pointer;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.app-item:hover {
+  background-color: #f3f4f6;
+}
+
+.app-title {
   font-weight: 500;
-  color: #4b5563;
-}
-
-.preview-empty-content p {
-  margin: 0;
+  color: #1f2937;
   font-size: 14px;
-  color: #9ca3af;
 }
 
-/* 响应式 */
-@media (max-width: 1024px) {
-  .main-content {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
+.app-time {
+  color: #6b7280;
+  font-size: 12px;
+}
 
-  .left-panel,
+/* 加载更多指示器样式 */
+.load-more-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  color: #666;
+  font-size: 14px;
+
+  .anticon {
+    margin-right: 8px;
+  }
+}
+
+/* 没有更多数据指示器样式 */
+.no-more-indicator {
+  text-align: center;
+  padding: 16px;
+  color: #999;
+  font-size: 14px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.drawer-footer {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.user-role {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.login-prompt {
+  text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
   .right-panel {
-    height: 80vh;
-    /* 在移动端给一个固定高度 */
+    width: 40%;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+  }
+  .right-panel {
+    width: 100%;
+    height: 400px; /* Fixed height on smaller screens */
   }
 }
 </style>

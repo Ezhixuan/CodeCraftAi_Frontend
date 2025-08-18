@@ -5,10 +5,21 @@
       <p class="form-subtitle">登录您的 CodeCraftAI 账户</p>
     </div>
 
-    <a-form :model="loginForm" :rules="loginRules" @finish="handleLogin" @finishFailed="handleLoginFailed"
-      layout="vertical" class="login-form">
+    <a-form
+      :model="loginForm"
+      :rules="loginRules"
+      @finish="handleLogin"
+      @finishFailed="handleLoginFailed"
+      layout="vertical"
+      class="login-form"
+    >
       <a-form-item name="account" label="账号">
-        <a-input v-model:value="loginForm.account" size="large" placeholder="请输入账号" class="custom-input">
+        <a-input
+          v-model:value="loginForm.account"
+          size="large"
+          placeholder="请输入账号"
+          class="custom-input"
+        >
           <template #prefix>
             <UserOutlined class="input-icon" />
           </template>
@@ -16,7 +27,12 @@
       </a-form-item>
 
       <a-form-item name="password" label="密码">
-        <a-input-password v-model:value="loginForm.password" size="large" placeholder="请输入密码" class="custom-input">
+        <a-input-password
+          v-model:value="loginForm.password"
+          size="large"
+          placeholder="请输入密码"
+          class="custom-input"
+        >
           <template #prefix>
             <LockOutlined class="input-icon" />
           </template>
@@ -25,17 +41,20 @@
 
       <a-form-item>
         <div class="form-options">
-          <a-checkbox v-model:checked="loginForm.remember">
-            记住我
-          </a-checkbox>
-          <a class="forgot-link" @click="handleForgotPassword">
-            忘记密码？
-          </a>
+          <a-checkbox v-model:checked="loginForm.remember"> 记住我 </a-checkbox>
+          <a class="forgot-link" @click="handleForgotPassword"> 忘记密码？ </a>
         </div>
       </a-form-item>
 
       <a-form-item>
-        <a-button type="primary" html-type="submit" size="large" :loading="loading" class="login-button" block>
+        <a-button
+          type="primary"
+          html-type="submit"
+          size="large"
+          :loading="loading"
+          class="login-button"
+          block
+        >
           登录
         </a-button>
       </a-form-item>
@@ -43,9 +62,7 @@
 
     <div class="form-footer">
       <span>还没有账户？</span>
-      <a class="register-link" @click="$emit('switchToRegister')">
-        立即注册
-      </a>
+      <a class="register-link" @click="$emit('switchToRegister')"> 立即注册 </a>
     </div>
 
     <!-- 第三方登录 -->
@@ -71,12 +88,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import {
-  UserOutlined,
-  LockOutlined,
-  GithubOutlined,
-  GoogleOutlined,
-} from '@ant-design/icons-vue'
+import { UserOutlined, LockOutlined, GithubOutlined, GoogleOutlined } from '@ant-design/icons-vue'
 import type { Rule } from 'ant-design-vue/es/form'
 import { doLogin } from '@/api/yonghukongzhiqi'
 import { useLoginUserStore } from '@/stores/loginUser'
@@ -122,16 +134,15 @@ const handleLogin = async (values: typeof loginForm) => {
       account: values.account,
       password: values.password,
     }
-    const userInfo = await doLogin(loginReq) as API.UserInfoCommonResVo
-
-    // 存储用户信息到store
-    loginUserStore.setLoginUser(userInfo)
-
-    message.success('登录成功！')
-
-    // 处理重定向
-    const redirect = new URLSearchParams(window.location.search).get('redirect')
-    router.push(redirect || '/')
+    const response = await doLogin(loginReq)
+    if (response.data.data) {
+      // 存储用户信息到store
+      loginUserStore.setLoginUser(response.data.data)
+      message.success('登录成功！')
+      // 处理重定向
+      const redirect = new URLSearchParams(window.location.search).get('redirect')
+      router.push(redirect || '/')
+    }
   } catch (error) {
     console.error('登录失败:', error)
   } finally {
@@ -142,7 +153,9 @@ const handleLogin = async (values: typeof loginForm) => {
 /**
  * 处理登录失败
  */
-const handleLoginFailed = (errorInfo: { errorFields: Array<{ name: string[]; errors: string[] }> }) => {
+const handleLoginFailed = (errorInfo: {
+  errorFields: Array<{ name: string[]; errors: string[] }>
+}) => {
   console.log('表单验证失败:', errorInfo)
 }
 

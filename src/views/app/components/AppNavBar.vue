@@ -1,0 +1,344 @@
+<template>
+  <div class="app-nav-bar">
+    <div class="nav-content">
+      <div class="left-section">
+        <div class="logo-section" @mouseover="handleLogoMouseOver">
+          <img
+            src="@/assets/codeAi 无背景.png"
+            @click="goHome"
+            alt="CodeCraft Logo"
+            class="logo-img"
+          />
+          <span class="logo-text">CodeCraft</span>
+        </div>
+
+        <div class="app-info-section">
+          <div v-if="loading" class="info-loading">
+            <a-spin size="small" />
+            <span>正在加载应用信息...</span>
+          </div>
+          <div v-else-if="appInfo" class="info-display">
+            <div class="app-name-container">
+              <a-input
+                v-if="isEditing && isOwnerCurr"
+                v-model:value="editingName"
+                @blur="saveAppName"
+                @pressEnter="saveAppName"
+                @keyup.esc="cancelEdit"
+                class="app-name-input"
+                :maxlength="50"
+                ref="nameInputRef"
+              />
+              <span v-else class="app-name" :class="{ editable: isOwnerCurr }" @click="startEdit">
+                {{ appInfo.name }}
+              </span>
+              <span v-if="isOwnerCurr" class="owner-tag">我的应用</span>
+            </div>
+
+            <a-popover title="应用信息" trigger="hover" placement="bottomLeft">
+              <template #content>
+                <div class="app-info-popover">
+                  <div class="info-item">
+                    <span class="label">应用ID：</span>
+                    <span class="value">{{ appInfo.id }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">创建时间：</span>
+                    <span class="value">{{ formatDate(appInfo.createTime) }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">更新时间：</span>
+                    <span class="value">{{ formatDate(appInfo.updateTime) }}</span>
+                  </div>
+                  <div v-if="appInfo.deployTime" class="info-item">
+                    <span class="label">部署时间：</span>
+                    <span class="value">{{ formatDate(appInfo.deployTime) }}</span>
+                  </div>
+                  <div v-if="appInfo.userInfo" class="info-item">
+                    <span class="label">创建者：</span>
+                    <span class="value">{{
+                      appInfo.userInfo.name || appInfo.userInfo.account
+                    }}</span>
+                  </div>
+                </div>
+              </template>
+              <a-button type="text" size="small" class="info-button">
+                <template #icon>
+                  <InfoCircleOutlined />
+                </template>
+              </a-button>
+            </a-popover>
+          </div>
+          <div v-else class="info-placeholder">
+            <span>无法加载应用信息</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-section">
+        <a-button v-if="isOwnerCurr" type="primary" @click="editApp">
+          <template #icon>
+            <EditOutlined />
+          </template>
+          编辑应用
+        </a-button>
+        <a-button v-else-if="appInfo" type="default" @click="viewApp">
+          <template #icon>
+            <EyeOutlined />
+          </template>
+          查看应用
+        </a-button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, nextTick } from 'vue'
+import { getInfo, update } from '@/api/yingyongkongzhiqi'
+import { message } from 'ant-design-vue'
+import { EditOutlined, EyeOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
+import { useRouter } from 'vue-router'
+import { useLoginUserStore } from '@/stores/loginUser'
+
+// --- Props and Emits ---
+const props = defineProps<{
+  appId?: string
+  sysAppInfo?: API.AppInfoCommonResVo
+  isOwner?: boolean
+}>()
+
+// MODIFIED: Define the events that this component can emit
+const emit = defineEmits(['logoMouseOver', 'logoMouseLeave'])
+
+// --- State and Refs ---
+const router = useRouter()
+const loginUser = useLoginUserStore()
+const appInfo = ref<API.AppInfoCommonResVo | null>(null)
+const isOwnerCurr = ref<boolean | null>(null)
+const loading = ref(true)
+const isEditing = ref(false)
+const editingName = ref('')
+const nameInputRef = ref()
+
+// --- Lifecycle Hooks ---
+onMounted(async () => {
+  loading.value = true
+  try {
+    if (props.sysAppInfo) {
+      appInfo.value = props.sysAppInfo
+    } else if (props.appId) {
+      try {
+        const response = await getInfo({ id: props.appId })
+        if (response.data.data) {
+          appInfo.value = response.data.data
+        }
+      } catch (error) {
+        message.error('获取应用信息失败')
+        console.error(error)
+      }
+    }
+    if (props.isOwner === null && appInfo.value) {
+      isOwnerCurr.value = appInfo.value.userId === loginUser.loginUser.id
+    } else {
+      isOwnerCurr.value = props.isOwner
+    }
+  } finally {
+    loading.value = false
+  }
+})
+
+// --- Methods ---
+const startEdit = () => {
+  if (!isOwnerCurr.value) return
+  isEditing.value = true
+  editingName.value = appInfo.value?.name || ''
+  nextTick(() => {
+    nameInputRef.value?.focus()
+  })
+}
+
+const saveAppName = async () => {
+  if (!editingName.value.trim()) {
+    message.error('应用名称不能为空')
+    return
+  }
+  if (editingName.value === appInfo.value?.name) {
+    isEditing.value = false
+    return
+  }
+  try {
+    const updateReq: API.AppUpdateCommonReqVo = {
+      id: props.appId!,
+      name: editingName.value.trim(),
+    }
+    await update(updateReq)
+    if (appInfo.value) {
+      appInfo.value.name = editingName.value.trim()
+    }
+    isEditing.value = false
+    message.success('应用名称更新成功')
+  } catch (error) {
+    message.error('更新应用名称失败')
+    console.error('更新应用名称失败:', error)
+  }
+}
+
+const cancelEdit = () => {
+  isEditing.value = false
+  editingName.value = appInfo.value?.name || ''
+}
+
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleString('zh-CN')
+}
+
+const editApp = () => {
+  router.push(`/app/edit/${props.appId}`)
+}
+
+const viewApp = () => {
+  message.info('您正在查看他人创建的应用')
+}
+
+const goHome = () => {
+  router.push('/')
+}
+
+const handleLogoMouseOver = () => {
+  emit('logoMouseOver')
+}
+</script>
+<style scoped>
+/* Styles are unchanged */
+.app-nav-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e8e8e8;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+}
+.nav-content {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.left-section {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+}
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Add padding to make the hover area larger and more stable */
+  padding: 8px;
+  margin: -8px; /* Counteract padding to maintain layout */
+  cursor: pointer;
+}
+.logo-img {
+  height: 32px;
+  transition: transform 0.2s ease;
+}
+.logo-img:hover {
+  transform: scale(1.05);
+}
+.logo-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+.app-info-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #555;
+}
+.info-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.info-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.app-name-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-name {
+  font-size: 16px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.app-name.editable {
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.app-name.editable:hover {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+}
+.app-name-input {
+  width: 200px;
+}
+.owner-tag {
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+  color: #1890ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.info-button {
+  color: #666;
+  border: none;
+  box-shadow: none;
+}
+.info-button:hover {
+  color: #1890ff;
+  background-color: #f0f0f0;
+}
+.info-placeholder {
+  color: #999;
+}
+.actions-section {
+  display: flex;
+  align-items: center;
+}
+.app-info-popover {
+  min-width: 250px;
+}
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.info-item:last-child {
+  border-bottom: none;
+}
+.info-item .label {
+  font-weight: 500;
+  color: #666;
+  min-width: 80px;
+}
+.info-item .value {
+  color: #333;
+  word-break: break-all;
+  text-align: right;
+  max-width: 150px;
+}
+</style>

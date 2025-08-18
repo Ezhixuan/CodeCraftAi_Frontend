@@ -5,10 +5,21 @@
       <p class="form-subtitle">开启您的 AI 代码生成之旅</p>
     </div>
 
-    <a-form :model="registerForm" :rules="registerRules" @finish="handleRegister" @finishFailed="handleRegisterFailed"
-      layout="vertical" class="register-form">
+    <a-form
+      :model="registerForm"
+      :rules="registerRules"
+      @finish="handleRegister"
+      @finishFailed="handleRegisterFailed"
+      layout="vertical"
+      class="register-form"
+    >
       <a-form-item name="account" label="账号">
-        <a-input v-model:value="registerForm.account" size="large" placeholder="请输入账号" class="custom-input">
+        <a-input
+          v-model:value="registerForm.account"
+          size="large"
+          placeholder="请输入账号"
+          class="custom-input"
+        >
           <template #prefix>
             <UserOutlined class="input-icon" />
           </template>
@@ -16,7 +27,12 @@
       </a-form-item>
 
       <a-form-item name="password" label="密码">
-        <a-input-password v-model:value="registerForm.password" size="large" placeholder="请输入密码" class="custom-input">
+        <a-input-password
+          v-model:value="registerForm.password"
+          size="large"
+          placeholder="请输入密码"
+          class="custom-input"
+        >
           <template #prefix>
             <LockOutlined class="input-icon" />
           </template>
@@ -24,8 +40,12 @@
       </a-form-item>
 
       <a-form-item name="confirmPassword" label="确认密码">
-        <a-input-password v-model:value="registerForm.confirmPassword" size="large" placeholder="请再次输入密码"
-          class="custom-input">
+        <a-input-password
+          v-model:value="registerForm.confirmPassword"
+          size="large"
+          placeholder="请再次输入密码"
+          class="custom-input"
+        >
           <template #prefix>
             <SafetyOutlined class="input-icon" />
           </template>
@@ -35,18 +55,21 @@
       <a-form-item name="agreement">
         <a-checkbox v-model:checked="registerForm.agreement">
           我已阅读并同意
-          <a class="agreement-link" @click="showTerms">
-            《用户协议》
-          </a>
+          <a class="agreement-link" @click="showTerms"> 《用户协议》 </a>
           和
-          <a class="agreement-link" @click="showPrivacy">
-            《隐私政策》
-          </a>
+          <a class="agreement-link" @click="showPrivacy"> 《隐私政策》 </a>
         </a-checkbox>
       </a-form-item>
 
       <a-form-item>
-        <a-button type="primary" html-type="submit" size="large" :loading="loading" class="register-button" block>
+        <a-button
+          type="primary"
+          html-type="submit"
+          size="large"
+          :loading="loading"
+          class="register-button"
+          block
+        >
           创建账户
         </a-button>
       </a-form-item>
@@ -54,9 +77,7 @@
 
     <div class="form-footer">
       <span>已有账户？</span>
-      <a class="login-link" @click="$emit('switchToLogin')">
-        立即登录
-      </a>
+      <a class="login-link" @click="$emit('switchToLogin')"> 立即登录 </a>
     </div>
 
     <!-- 第三方注册 -->
@@ -89,7 +110,7 @@ import {
   GoogleOutlined,
 } from '@ant-design/icons-vue'
 import type { Rule } from 'ant-design-vue/es/form'
-import { doRegister } from '@/api/yonghukongzhiqi';
+import { doRegister } from '@/api/yonghukongzhiqi'
 
 // 定义组件事件
 const emit = defineEmits<{
@@ -117,7 +138,11 @@ const registerRules: Record<string, Rule[]> = {
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度不能小于 6 个字符', trigger: 'blur' },
-    { pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/, message: '密码必须包含大小写字母和数字', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/,
+      message: '密码必须包含大小写字母和数字',
+      trigger: 'blur',
+    },
   ],
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
@@ -156,12 +181,14 @@ const handleRegister = async () => {
       password: registerForm.password,
       confirmPassword: registerForm.confirmPassword,
     }
-    await doRegister(userRegisterReqVo)
-    // 清空表单信息
-    cleanForm()
-    message.success('注册成功！请登录您的账户')
-    // 切换到登录表单
-    emit('switchToLogin')
+    const response = await doRegister(userRegisterReqVo)
+    if (response.data.data) {
+      // 清空表单信息
+      cleanForm()
+      message.success('注册成功！请登录您的账户')
+      // 切换到登录表单
+      emit('switchToLogin')
+    }
   } catch (error) {
     console.error('注册失败:', error)
     message.error('注册失败，请重试')
@@ -173,7 +200,9 @@ const handleRegister = async () => {
 /**
  * 处理注册失败
  */
-const handleRegisterFailed = (errorInfo: { errorFields: Array<{ name: string[]; errors: string[] }> }) => {
+const handleRegisterFailed = (errorInfo: {
+  errorFields: Array<{ name: string[]; errors: string[] }>
+}) => {
   console.log('表单验证失败:', errorInfo)
 }
 

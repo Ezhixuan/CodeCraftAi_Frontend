@@ -4,11 +4,11 @@ declare namespace API {
   }
 
   type adminDisableParams = {
-    disableId: number
+    disableId: string
   }
 
   type adminGetInfoParams = {
-    id: number
+    id: string
   }
 
   type adminGetList1Params = {
@@ -20,7 +20,7 @@ declare namespace API {
   }
 
   type adminGetUserInfoParams = {
-    id: number
+    id: string
   }
 
   type AppGenerateReqVo = {
@@ -30,7 +30,7 @@ declare namespace API {
 
   type AppInfoAdminResVo = {
     /** 应用ID */
-    id?: number
+    id?: string
     /** 应用名称 */
     name?: string
     /** 应用封面 */
@@ -46,7 +46,7 @@ declare namespace API {
     /** 优先级 */
     priority?: number
     /** 用户 id */
-    userId?: number
+    userId?: string
     /**  创建时间 */
     createTime?: string
     /** 更新时间 */
@@ -56,7 +56,7 @@ declare namespace API {
 
   type AppInfoCommonResVo = {
     /** 应用ID */
-    id?: number
+    id?: string
     /** 应用名称 */
     name?: string
     /** 应用封面 */
@@ -64,7 +64,7 @@ declare namespace API {
     /** 部署时间 */
     deployTime?: string
     /** 用户 id */
-    userId?: number
+    userId?: string
     /**  创建时间 */
     createTime?: string
     /** 更新时间 */
@@ -80,7 +80,7 @@ declare namespace API {
     /** 排序方式 */
     orderBy?: string
     /** 应用ID */
-    id?: number
+    id?: string
     /** 应用名称 */
     name?: string
     /** 代码生成类型 */
@@ -92,7 +92,7 @@ declare namespace API {
     /** 优先级 */
     priority?: number
     /** 用户 id */
-    userId?: number
+    userId?: string
     /** 开始时间 */
     startTime?: string
     /** 结束时间 */
@@ -101,7 +101,7 @@ declare namespace API {
 
   type AppUpdateAdminReqVo = {
     /** 应用ID */
-    id: number
+    id: string
     /** 应用名称 */
     name?: string
     /** 应用封面 */
@@ -114,7 +114,7 @@ declare namespace API {
 
   type AppUpdateCommonReqVo = {
     /** 应用ID */
-    id: number
+    id: string
     /** 应用名称 */
     name?: string
   }
@@ -140,7 +140,7 @@ declare namespace API {
   type BaseResponseLong = {
     message?: string
     code?: number
-    data?: number
+    data?: string
   }
 
   type BaseResponseString = {
@@ -168,18 +168,18 @@ declare namespace API {
   }
 
   type deleteUsingDELETEParams = {
-    id: number
+    id: string
   }
 
   type deployPreviewParams = {
-    appId: number
+    appId: string
   }
 
   type DeployStatusVo = {
     /** 应用ID */
-    appId?: number
+    appId?: string
     /** 部署标识 */
-    deployKey?: string
+    preDeployKey?: string
     /** 部署时间 */
     deployTime?: string
     /** 临时文件是否存在 */
@@ -190,19 +190,23 @@ declare namespace API {
 
   type generateCodeParams = {
     message: string
-    appId: number
+    appId: string
   }
 
   type getDeployStatusParams = {
-    appId: number
+    appId: string
   }
 
   type getInfoParams = {
-    id: number
+    id: string
   }
 
   type getListParams = {
     queryReqVo: AppQueryReqVo
+  }
+
+  type getUserInfoByIdParams = {
+    id: string
   }
 
   type PageResponseAppInfoAdminResVo = {
@@ -236,33 +240,33 @@ declare namespace API {
   }
 
   type PageResVoAppInfoAdminResVo = {
-    totalRow?: number
+    totalRow?: string
     list?: AppInfoAdminResVo[]
-    totalPage?: number
+    totalPage?: string
   }
 
   type PageResVoAppInfoCommonResVo = {
-    totalRow?: number
+    totalRow?: string
     list?: AppInfoCommonResVo[]
-    totalPage?: number
+    totalPage?: string
   }
 
   type PageResVoString = {
-    totalRow?: number
+    totalRow?: string
     list?: string[]
-    totalPage?: number
+    totalPage?: string
   }
 
   type PageResVoUserAddResVo = {
-    totalRow?: number
+    totalRow?: string
     list?: UserAddResVo[]
-    totalPage?: number
+    totalPage?: string
   }
 
   type PageResVoUserInfoAdminResVo = {
-    totalRow?: number
+    totalRow?: string
     list?: UserInfoAdminResVo[]
-    totalPage?: number
+    totalPage?: string
   }
 
   type redirectToStaticResourceParams = {
@@ -287,7 +291,7 @@ declare namespace API {
 
   type UserInfoAdminResVo = {
     /** 用户id */
-    id?: number
+    id?: string
     /** 用户账号 */
     account?: string
     /** 用户昵称 */
@@ -310,7 +314,7 @@ declare namespace API {
 
   type UserInfoCommonResVo = {
     /** 用户id */
-    id?: number
+    id?: string
     /** 用户账号 */
     account?: string
     /** 用户昵称 */
@@ -344,7 +348,7 @@ declare namespace API {
     /** 排序方式 */
     orderBy?: string
     /** 用户id */
-    id?: number
+    id?: string
     /** 用户账号 */
     account?: string
     /** 用户昵称 */
@@ -370,7 +374,7 @@ declare namespace API {
 
   type UserUpdateReqVo = {
     /** 用户id */
-    id: number
+    id: string
     /** 用户密码 */
     password?: string
     /** 用户昵称 */

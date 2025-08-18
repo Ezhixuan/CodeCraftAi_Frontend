@@ -13,6 +13,9 @@ const router = createRouter({
       path: '/app/code-message',
       name: 'CodeMessage',
       component: () => import('@/views/app/CodeMessageView.vue'),
+      meta: {
+        hideLayout: true,
+      },
     },
     // 新的统一认证页面
     {

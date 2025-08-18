@@ -22,6 +22,20 @@ export async function updateUserInfo(body: API.UserUpdateReqVo, options?: { [key
   })
 }
 
+/** 通过 id 获取用户信息 GET /user/${param0} */
+export async function getUserInfoById(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getUserInfoByIdParams,
+  options?: { [key: string]: any }
+) {
+  const { id: param0, ...queryParams } = params
+  return request<API.BaseResponseUserInfoCommonResVo>(`/user/${param0}`, {
+    method: 'GET',
+    params: { ...queryParams },
+    ...(options || {}),
+  })
+}
+
 /** 获取用户信息(完整) GET /user/${param0}/admin */
 export async function adminGetUserInfo(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)

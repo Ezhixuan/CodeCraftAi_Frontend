@@ -34,7 +34,7 @@ const md = new MarkdownIt({
       }
     }
     return '' // use external default escaping
-  }
+  },
 })
 
 // 保存原始的 fence 渲染器

@@ -30,7 +30,7 @@ myAxios.interceptors.response.use(
     if (data && typeof data.code !== 'undefined') {
       // 请求成功，返回data内容
       if (data.code === 0) {
-        return data.data
+        return response
       }
 
       // 未登录

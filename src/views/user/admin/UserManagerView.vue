@@ -9,22 +9,40 @@
     <a-card class="search-card" title="搜索条件">
       <a-form :model="searchForm" layout="inline" @finish="handleSearch" @reset="handleReset">
         <a-form-item label="用户ID" name="id">
-          <a-input-number v-model:value="searchForm.id" placeholder="请输入用户ID" style="width: 150px" />
+          <a-input-number
+            v-model:value="searchForm.id"
+            placeholder="请输入用户ID"
+            style="width: 150px"
+          />
         </a-form-item>
 
         <a-form-item label="用户名称" name="name">
-          <a-input v-model:value="searchForm.name" placeholder="请输入用户名称" style="width: 200px" />
+          <a-input
+            v-model:value="searchForm.name"
+            placeholder="请输入用户名称"
+            style="width: 200px"
+          />
         </a-form-item>
 
         <a-form-item label="用户状态" name="status">
-          <a-select v-model:value="searchForm.status" placeholder="请选择状态" style="width: 120px" allow-clear>
+          <a-select
+            v-model:value="searchForm.status"
+            placeholder="请选择状态"
+            style="width: 120px"
+            allow-clear
+          >
             <a-select-option :value="1">正常</a-select-option>
             <a-select-option :value="0">禁用</a-select-option>
           </a-select>
         </a-form-item>
 
         <a-form-item label="用户角色" name="role">
-          <a-select v-model:value="searchForm.role" placeholder="请选择角色" style="width: 150px" allow-clear>
+          <a-select
+            v-model:value="searchForm.role"
+            placeholder="请选择角色"
+            style="width: 150px"
+            allow-clear
+          >
             <a-select-option value="USER">普通用户</a-select-option>
             <a-select-option value="ADMIN">管理员</a-select-option>
           </a-select>
@@ -35,9 +53,7 @@
             <a-button type="primary" html-type="submit" :loading="loading">
               <SearchOutlined /> 搜索
             </a-button>
-            <a-button html-type="reset">
-              <ReloadOutlined /> 重置
-            </a-button>
+            <a-button html-type="reset"> <ReloadOutlined /> 重置 </a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -60,8 +76,14 @@
 
     <!-- 用户列表 -->
     <a-card class="table-card" title="用户列表">
-      <a-table :columns="columns" :data-source="userList" :pagination="pagination" :loading="loading" row-key="id"
-        @change="handleTableChange">
+      <a-table
+        :columns="columns"
+        :data-source="userList"
+        :pagination="pagination"
+        :loading="loading"
+        row-key="id"
+        @change="handleTableChange"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
             <a-tag :color="record.status === 1 ? 'green' : 'red'">
@@ -77,10 +99,14 @@
 
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button type="link" size="small" @click="viewUser(record)">
-                查看
-              </a-button>
-              <a-button type="link" size="small" danger @click="disableUser(record)" :disabled="record.status === 0">
+              <a-button type="link" size="small" @click="viewUser(record)"> 查看 </a-button>
+              <a-button
+                type="link"
+                size="small"
+                danger
+                @click="disableUser(record)"
+                :disabled="record.status === 0"
+              >
                 禁用
               </a-button>
             </a-space>
@@ -90,23 +116,42 @@
     </a-card>
 
     <!-- 按账号批量创建用户模态框 -->
-    <a-modal v-model:open="addByAccountVisible" title="批量创建用户(按账号)" width="600px" @ok="handleAddByAccount"
-      :confirm-loading="addLoading">
+    <a-modal
+      v-model:open="addByAccountVisible"
+      title="批量创建用户(按账号)"
+      width="600px"
+      @ok="handleAddByAccount"
+      :confirm-loading="addLoading"
+    >
       <a-form :model="addByAccountForm" layout="vertical">
         <a-form-item label="用户账号列表">
-          <a-textarea v-model:value="addByAccountForm.accounts" placeholder="请输入用户账号，每行一个账号" :rows="6" />
+          <a-textarea
+            v-model:value="addByAccountForm.accounts"
+            placeholder="请输入用户账号，每行一个账号"
+            :rows="6"
+          />
           <div class="form-tip">每行输入一个账号，系统将自动生成密码</div>
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 按数量批量创建用户模态框 -->
-    <a-modal v-model:open="addBySizeVisible" title="批量创建用户(按数量)" width="400px" @ok="handleAddBySize"
-      :confirm-loading="addLoading">
+    <a-modal
+      v-model:open="addBySizeVisible"
+      title="批量创建用户(按数量)"
+      width="400px"
+      @ok="handleAddBySize"
+      :confirm-loading="addLoading"
+    >
       <a-form :model="addBySizeForm" layout="vertical">
         <a-form-item label="创建数量">
-          <a-input-number v-model:value="addBySizeForm.size" :min="1" :max="1000" placeholder="请输入要创建的用户数量"
-            style="width: 100%" />
+          <a-input-number
+            v-model:value="addBySizeForm.size"
+            :min="1"
+            :max="1000"
+            placeholder="请输入要创建的用户数量"
+            style="width: 100%"
+          />
           <div class="form-tip">系统将自动生成账号和密码，最多支持1000个</div>
         </a-form-item>
       </a-form>
@@ -117,9 +162,7 @@
       <div v-if="currentUser" class="user-detail">
         <!-- 用户头像 -->
         <div class="user-avatar-section">
-          <a-avatar :size="80" :src="currentUser.avatar" :style="{ backgroundColor: '#1890ff' }">
-            {{ currentUser.name?.charAt(0) || currentUser.account?.charAt(0) }}
-          </a-avatar>
+          <UserAvatar :size="80" :user-id="currentUser.id" />
           <div class="user-basic-info">
             <h3>{{ currentUser.name || currentUser.account }}</h3>
             <p class="user-account">@{{ currentUser.account }}</p>
@@ -135,7 +178,9 @@
         <!-- 详细信息 -->
         <a-descriptions :column="2" bordered>
           <a-descriptions-item label="用户ID">{{ currentUser.id }}</a-descriptions-item>
-          <a-descriptions-item label="邮箱">{{ currentUser.email || '未设置' }}</a-descriptions-item>
+          <a-descriptions-item label="邮箱">{{
+            currentUser.email || '未设置'
+          }}</a-descriptions-item>
           <a-descriptions-item label="状态">
             <a-tag :color="currentUser.status === 1 ? 'green' : 'red'">
               {{ currentUser.status === 1 ? '正常' : '禁用' }}
@@ -159,22 +204,35 @@
     <!-- 创建用户结果展示模态框 -->
     <a-modal v-model:open="showCreatedUsersModal" title="用户创建成功" width="800px" :footer="null">
       <div class="created-users-result">
-        <a-alert message="用户创建成功" :description="`成功创建 ${currentCreatedUsers.length} 个用户，请妥善保存账号密码信息`" type="success"
-          show-icon style="margin-bottom: 16px" />
+        <a-alert
+          message="用户创建成功"
+          :description="`成功创建 ${currentCreatedUsers.length} 个用户，请妥善保存账号密码信息`"
+          type="success"
+          show-icon
+          style="margin-bottom: 16px"
+        />
 
         <div class="result-actions" style="margin-bottom: 16px">
           <a-space>
             <a-button type="primary" @click="exportCreatedUsers()">
               <DownloadOutlined /> 导出当前创建的用户
             </a-button>
-            <a-button @click="exportAllCreatedUsers()" v-if="createdUsers.length > currentCreatedUsers.length">
+            <a-button
+              @click="exportAllCreatedUsers()"
+              v-if="createdUsers.length > currentCreatedUsers.length"
+            >
               <DownloadOutlined /> 导出本次所有创建的用户 ({{ createdUsers.length }}个)
             </a-button>
           </a-space>
         </div>
 
-        <a-table :columns="createdUsersColumns" :data-source="currentCreatedUsers" :pagination="false" size="small"
-          bordered>
+        <a-table
+          :columns="createdUsersColumns"
+          :data-source="currentCreatedUsers"
+          :pagination="false"
+          size="small"
+          bordered
+        >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'password'">
               <a-typography-text copyable>{{ record.password }}</a-typography-text>
@@ -196,15 +254,16 @@ import {
   SearchOutlined,
   ReloadOutlined,
   PlusOutlined,
-  DownloadOutlined
+  DownloadOutlined,
 } from '@ant-design/icons-vue'
 import {
   adminGetList,
   adminAddByAccount,
   adminAddBySize,
-  adminDisable
+  adminDisable,
 } from '@/api/yonghukongzhiqi'
 import type { TableColumnsType, TableProps } from 'ant-design-vue'
+import UserAvatar from '@/components/UserAvatarComponent.vue'
 
 // 搜索表单
 const searchForm = reactive<API.UserQueryReqVo>({
@@ -213,7 +272,7 @@ const searchForm = reactive<API.UserQueryReqVo>({
   id: undefined,
   name: undefined,
   status: undefined,
-  role: undefined
+  role: undefined,
 })
 
 // 用户列表数据
@@ -229,7 +288,7 @@ const pagination = computed(() => ({
   showSizeChanger: true,
   showQuickJumper: true,
   showTotal: (total: number, range: [number, number]) =>
-    `第 ${range[0]}-${range[1]} 条，共 ${total} 条`
+    `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
 }))
 
 // 表格列配置
@@ -238,50 +297,50 @@ const columns: TableColumnsType = [
     title: 'ID',
     dataIndex: 'id',
     key: 'id',
-    width: 80
+    width: 80,
   },
   {
     title: '账号',
     dataIndex: 'account',
     key: 'account',
-    width: 150
+    width: 150,
   },
   {
     title: '昵称',
     dataIndex: 'name',
     key: 'name',
-    width: 120
+    width: 120,
   },
   {
     title: '邮箱',
     dataIndex: 'email',
     key: 'email',
-    width: 200
+    width: 200,
   },
   {
     title: '状态',
     dataIndex: 'status',
     key: 'status',
-    width: 100
+    width: 100,
   },
   {
     title: '角色',
     dataIndex: 'role',
     key: 'role',
-    width: 120
+    width: 120,
   },
   {
     title: '创建时间',
     dataIndex: 'createTime',
     key: 'createTime',
-    width: 180
+    width: 180,
   },
   {
     title: '操作',
     key: 'action',
     width: 150,
-    fixed: 'right'
-  }
+    fixed: 'right',
+  },
 ]
 
 // 批量创建相关
@@ -293,11 +352,11 @@ const showCreatedUsersModal = ref(false)
 const currentCreatedUsers = ref<API.UserAddResVo[]>([])
 
 const addByAccountForm = reactive({
-  accounts: ''
+  accounts: '',
 })
 
 const addBySizeForm = reactive({
-  size: 1
+  size: 1,
 })
 
 // 用户详情
@@ -309,12 +368,12 @@ const getUserList = async () => {
   try {
     loading.value = true
     const res = await adminGetList({
-      queryReqVo: searchForm
-    }) as API.PageResVoUserInfoAdminResVo
+      queryReqVo: searchForm,
+    })
 
-    if (res) {
-      userList.value = res.list || []
-      total.value = res.totalRow || 0
+    if (res.data.data) {
+      userList.value = res.data.data.list || []
+      total.value = Number(res.data.data.totalRow) || 0
     }
   } catch (error) {
     console.error('获取用户列表失败:', error)
@@ -337,7 +396,7 @@ const handleReset = () => {
     id: undefined,
     name: undefined,
     status: undefined,
-    role: undefined
+    role: undefined,
   })
   getUserList()
 }
@@ -374,20 +433,20 @@ const handleAddByAccount = async () => {
     addLoading.value = true
     const accounts = addByAccountForm.accounts
       .split('\n')
-      .map(account => account.trim())
-      .filter(account => account)
+      .map((account) => account.trim())
+      .filter((account) => account)
 
-    const userAddReqs: API.UserAddReqVo[] = accounts.map(account => ({
+    const userAddReqs: API.UserAddReqVo[] = accounts.map((account) => ({
       account,
-      name: account // 默认昵称为账号
+      name: account, // 默认昵称为账号
     }))
 
-    const response = await adminAddByAccount(userAddReqs) as API.PageResVoUserAddResVo
+    const response = await adminAddByAccount(userAddReqs)
 
-    if (response.list) {
-      currentCreatedUsers.value = response.list
-      createdUsers.value.push(...response.list)
-      message.success(`成功创建 ${response.totalPage} 个用户`)
+    if (response.data.data?.list) {
+      currentCreatedUsers.value = response.data.data.list
+      createdUsers.value.push(...response.data.data.list)
+      message.success(`成功创建 ${response.data.data.totalPage} 个用户`)
       addByAccountVisible.value = false
       showCreatedUsersModal.value = true // 显示创建结果
       getUserList() // 刷新列表
@@ -409,13 +468,13 @@ const handleAddBySize = async () => {
   try {
     addLoading.value = true
     const response = await adminAddBySize({
-      size: addBySizeForm.size
-    }) as API.PageResVoUserAddResVo
+      size: addBySizeForm.size,
+    })
 
-    if (response.list) {
-      currentCreatedUsers.value = response.list
-      createdUsers.value.push(...response.list)
-      message.success(`成功创建 ${response.list.length} 个用户`)
+    if (response.data.data?.list) {
+      currentCreatedUsers.value = response.data.data.list
+      createdUsers.value.push(...response.data.data.list)
+      message.success(`成功创建 ${response.data.data.list.length} 个用户`)
       addBySizeVisible.value = false
       showCreatedUsersModal.value = true // 显示创建结果
       getUserList() // 刷新列表
@@ -446,7 +505,7 @@ const disableUser = (user: API.UserInfoAdminResVo) => {
       } catch (error) {
         console.error('禁用用户失败:', error)
       }
-    }
+    },
   })
 }
 
@@ -460,9 +519,9 @@ const exportCreatedUsers = (users: API.UserAddResVo[] = currentCreatedUsers.valu
   // 生成CSV内容
   const csvContent = [
     ['账号', '密码'], // 表头
-    ...users.map(user => [user.account, user.password])
+    ...users.map((user) => [user.account, user.password]),
   ]
-    .map(row => row.join(','))
+    .map((row) => row.join(','))
     .join('\n')
 
   // 创建下载链接
@@ -492,14 +551,14 @@ const createdUsersColumns = [
     title: '账号',
     dataIndex: 'account',
     key: 'account',
-    width: '50%'
+    width: '50%',
   },
   {
     title: '密码',
     dataIndex: 'password',
     key: 'password',
-    width: '50%'
-  }
+    width: '50%',
+  },
 ]
 
 // 页面初始化
@@ -595,7 +654,7 @@ onMounted(() => {
 }
 
 :deep(.ant-table) {
-  .ant-table-thead>tr>th {
+  .ant-table-thead > tr > th {
     background-color: #fafafa;
     font-weight: 600;
   }
