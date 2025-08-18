@@ -74,13 +74,13 @@
 
           <!-- 底部区域：用户信息 -->
           <div class="drawer-footer">
-            <div v-if="loginUser.isLogin()" class="user-info">
-              <a-avatar :src="loginUser.loginUser.avatar" size="small">
-                {{ loginUser.loginUser.name?.charAt(0) || 'U' }}
+            <div v-if="loginUserStore.isLogin()" class="user-info">
+              <a-avatar :src="loginUserStore.loginUser.avatar" size="small">
+                {{ loginUserStore.loginUser.name?.charAt(0) || 'U' }}
               </a-avatar>
               <div class="user-details">
-                <div class="user-name">{{ loginUser.loginUser.name }}</div>
-                <div class="user-role">{{ getRoleText(loginUser.loginUser.role) }}</div>
+                <div class="user-name">{{ loginUserStore.loginUser.name }}</div>
+                <div class="user-role">{{ getRoleText(loginUserStore.loginUser.role) }}</div>
               </div>
             </div>
             <div v-else class="login-prompt">
@@ -290,7 +290,7 @@ let generatingTextTimer: ReturnType<typeof setInterval> | null = null
 // --- Router and Stores ---
 const route = useRoute()
 const router = useRouter()
-const loginUser = useLoginUserStore()
+const loginUserStore = useLoginUserStore()
 
 // --- Drawer State ---// 应用列表相关状态
 const appList = ref<API.AppInfoCommonResVo[]>([])
@@ -368,7 +368,7 @@ const scrollToBottom = () => {
  * @param isLoadMore 是否为加载更多模式
  */
 const fetchAppList = async (isLoadMore = false) => {
-  if (!loginUser.isLogin()) return
+  if (!loginUserStore.isLogin()) return
 
   if (!isLoadMore) {
     appListLoading.value = true
@@ -535,7 +535,7 @@ async function getAppInfo(id: string) {
     const response = await getInfo({ id })
     if (response.data.data) {
       sysAppInfo.value = response.data.data
-      isOwner.value = sysAppInfo.value.userId === loginUser.$id
+      isOwner.value = sysAppInfo.value.userId === loginUserStore.loginUser.id
     }
   } catch (error) {
     console.error('获取应用信息失败:', error)
@@ -734,7 +734,7 @@ const isDrawerVisible = ref(false)
 const handleLogoMouseOver = () => {
   isDrawerVisible.value = true
   // 当抽屉打开时获取应用列表
-  if (loginUser.isLogin()) {
+  if (loginUserStore.isLogin()) {
     fetchAppList()
   }
 }
