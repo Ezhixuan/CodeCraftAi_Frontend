@@ -114,12 +114,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { FormInstance } from 'ant-design-vue'
 import { message } from 'ant-design-vue'
-import { EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons-vue'
+import { CloseOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons-vue'
 import { getUserInfo, updateUserInfo } from '@/api/yonghukongzhiqi'
 import { useLoginUserStore } from '@/stores/loginUser'
-import type { FormInstance } from 'ant-design-vue'
 import UserAvatar from '@/components/UserAvatarComponent.vue'
 import CommonBackground from '@/components/CommonBackgroundComponent.vue'
 

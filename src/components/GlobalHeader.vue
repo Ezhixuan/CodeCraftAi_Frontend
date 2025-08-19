@@ -101,7 +101,6 @@ const processMenuItem = (item: MenuItem, userRole: UserRole): ProcessedMenuItem 
     const children = item.children
       .map((child) => processMenuItem(child, userRole))
       .filter((child): child is ProcessedMenuItem => child !== null) // 过滤掉权限不足的子菜单项
-    
     if (children.length > 0) {
       menuItem.children = children
     }
@@ -135,10 +134,15 @@ const handleMenuClick = (menuInfo: { key: string }) => {
 }
 
 const handleLogout = async () => {
-  await doLogout()
-  loginUserStore.logout()
-  router.push('/auth/login')
-  message.success('退出登录成功')
+  try {
+    await doLogout()
+    loginUserStore.logout()
+    await router.push('/auth/login')
+    message.success('退出登录成功')
+  }catch (error) {
+    message.error('退出登录失败')
+    console.error('退出登录失败:', error)
+  }
 }
 
 const handleProfileClick = () => {

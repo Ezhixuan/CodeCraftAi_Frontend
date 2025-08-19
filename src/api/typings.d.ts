@@ -97,6 +97,8 @@ declare namespace API {
     startTime?: string
     /** 结束时间 */
     endTime?: string
+    /** 最大 id */
+    maxId?: string
   }
 
   type AppUpdateAdminReqVo = {

@@ -15,12 +15,8 @@ const router = createRouter({
       component: () => import('@/views/app/CodeMessageView.vue'),
       meta: {
         hideLayout: true,
+        keepAlive: false,
       },
-    },
-    // 新的统一认证页面
-    {
-      path: '/auth',
-      redirect: '/auth/login',
     },
     {
       path: '/auth/login',

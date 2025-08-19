@@ -36,5 +36,19 @@ export const useLoginUserStore = defineStore('loginUser', () => {
     return loginUser.value.id !== undefined && loginUser.value.id !== '-1'
   }
 
-  return { loginUser, fetchLoginUserInfo, setLoginUser, logout, isLogin }
+  function getRoleText(role?: string): string {
+    const roleSwitch = role || loginUser.value.role
+    switch (roleSwitch) {
+      case 'USER':
+        return '普通用户'
+      case 'ADMIN':
+        return '管理员'
+      case 'GUEST':
+        return '游客'
+      default:
+        return '未知'
+    }
+  }
+
+  return { loginUser, fetchLoginUserInfo, setLoginUser, logout, isLogin, getRoleText }
 })

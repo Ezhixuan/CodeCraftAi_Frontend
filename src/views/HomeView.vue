@@ -11,11 +11,14 @@
         <div class="input-container">
           <InputComponent
             v-model="userInput"
+            multiline
+            :rows="5"
             width="700px"
             height="150px"
             fontSize="16px"
             :required="true"
             :show-submit-button="true"
+            :disabled="isGenerating"
             submit-button-text="生成应用"
             :enable-typewriter="true"
             :placeholder-array="[
@@ -23,13 +26,15 @@
               '使用 CodeCraft 创建一个简单的博客网站',
             ]"
             @submit="handleSubmit"
+            :show-preset-prompts="true"
+            :preset-prompts="prompts"
           />
         </div>
       </div>
     </div>
 
     <!-- 用户已创建应用展示区域 -->
-    <div v-if="isLoggedIn" class="apps-section user-apps-section">
+    <div v-if="loginUserStore.isLogin()" class="apps-section user-apps-section">
       <div class="section-header">
         <h2 class="section-title">我的应用</h2>
         <p class="section-subtitle">您已创建的应用</p>
@@ -65,7 +70,7 @@
         <div class="empty-text">暂无精选应用</div>
       </div>
       <div v-else class="apps-grid">
-        <DarkTechAppCard
+        <AppCardComponent
           v-for="app in featuredApps"
           :key="app.id"
           :app-info="app"
@@ -79,46 +84,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
-
-import CommonBackground from '@/components/CommonBackgroundComponent.vue'
-import { getList, getFeaturedList, doGenerate } from '@/api/yingyongkongzhiqi'
+import { doGenerate, getFeaturedList, getList } from '@/api/yingyongkongzhiqi'
 import { useLoginUserStore } from '@/stores/loginUser'
 import InputComponent from '@/components/InputComponent.vue'
 import AppCardComponent from '@/components/AppCardComponent.vue'
+import CommonBackground from '@/components/CommonBackgroundComponent.vue'
 import router from '@/router'
-
-// 用户输入内容
-const userInput = ref('')
 
 // 登录用户状态
 const loginUserStore = useLoginUserStore()
 
 // 应用列表数据
 const userApps = ref<API.AppInfoCommonResVo[]>([])
-const featuredApps = ref<API.AppInfoCommonResVo[]>([])
+// 应用列表加载状态
 const userAppsLoading = ref(false)
+// 精选应用列表数据
+const featuredApps = ref<API.AppInfoCommonResVo[]>([])
+// 精选应用列表加载状态
 const featuredAppsLoading = ref(false)
+// 用户输入内容
+const userInput = ref('')
+// 对话框加载状态
+const isGenerating = ref(false)
+// 预设提示词
+const prompts = ref([
+  {
+    key: '个人博客',
+    value: '帮我创建一个个人博客页面,需要保证用户信息面板处于右上角处',
+  },
+  {
+    key: '音乐播放器',
+    value: '创建一个音乐播放器页面,需要小巧,能够方便在其他页面引入',
+  },
+])
 
-// 计算用户是否已登录
-const isLoggedIn = computed(() => {
-  return loginUserStore.isLogin()
+// 组件挂载时加载数据
+onMounted(() => {
+  loadUserApps()
+  loadFeaturedApps()
 })
 
 /**
  * 加载用户已创建的应用列表
  */
 const loadUserApps = async () => {
-  if (!isLoggedIn.value) return
+  if (!loginUserStore.isLogin()) return
 
   userAppsLoading.value = true
   try {
     const response = await getList({
       queryReqVo: {
         pageNo: 1,
-        pageSize: 8,
-        orderBy: 'updateTime desc',
+        pageSize: 9,
+        orderBy: 'desc',
       },
     })
     if (response.data.data?.list) {
@@ -154,31 +174,38 @@ const loadFeaturedApps = async () => {
  * 处理生成应用按钮点击事件
  */
 const handleSubmit = async () => {
-  if (!isLoggedIn.value) {
+  if (!loginUserStore.isLogin()) {
     message.error('请先登录')
     return
   }
 
   const userInputMessage = userInput.value.trim()
   if (!userInputMessage) {
+    message.error('请输入内容')
     return
   }
   // 初始化应用
-  // 需要添加一个loading动画等待
-  const response = await doGenerate({
-    initPrompt: userInput.value,
-  })
-
-  if (response.data.data) {
-    // 跳转对应的应用详情页
-    await router.push({
-      path: '/app/code-message',
-      query: {
-        appId: response.data.data,
-        userMessage: userInputMessage,
-        action: 'create',
-      },
+  isGenerating.value = true
+  try {
+    const response = await doGenerate({
+      initPrompt: userInput.value,
     })
+    if (response.data.data) {
+      // 跳转对应的应用详情页
+      await router.push({
+        path: '/app/code-message',
+        query: {
+          appId: response.data.data,
+          userMessage: userInputMessage,
+          action: '1',
+        },
+      })
+    }
+  } catch (error) {
+    console.error('生成应用失败:', error)
+    message.error('生成应用失败')
+  } finally {
+    isGenerating.value = false
   }
 }
 
@@ -186,24 +213,20 @@ const handleSubmit = async () => {
  * 处理应用卡片点击事件
  */
 const handleAppCardClick = (app: API.AppInfoCommonResVo) => {
-  console.log('app', app)
-  router.push({
-    path: '/app/code-message',
-    query: {
-      appId: app.id,
-      action: 'view',
-      userId: loginUserStore.loginUser.id,
-    },
-  })
-}
-
-// 组件挂载时加载数据
-onMounted(() => {
-  loadFeaturedApps()
-  if (isLoggedIn.value) {
-    loadUserApps()
+  try {
+    router.push({
+      path: '/app/code-message',
+      query: {
+        appId: app.id,
+        action: 'view',
+        userId: loginUserStore.loginUser.id,
+      },
+    })
+  }catch (error) {
+    console.error("应用跳转失败",error)
   }
-})
+
+}
 </script>
 
 <style scoped>
@@ -247,50 +270,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 1.5rem;
   align-items: center;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.submit-btn,
-.optimize-btn {
-  padding: 12px 32px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.submit-btn {
-  background: linear-gradient(135deg, #00d4ff, #0099cc);
-  color: #ffffff;
-}
-
-.submit-btn:hover {
-  background: linear-gradient(135deg, #00b8e6, #007aa3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
-}
-
-.optimize-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.optimize-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.1);
 }
 
 /* 应用展示区域样式 */
@@ -380,17 +359,6 @@ onMounted(() => {
 
   .main-content {
     padding: 1rem;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .submit-btn,
-  .optimize-btn {
-    width: 100%;
-    max-width: 300px;
   }
 
   .apps-section {
