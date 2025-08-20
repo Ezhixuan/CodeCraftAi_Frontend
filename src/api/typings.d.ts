@@ -169,6 +169,36 @@ declare namespace API {
     data?: Record<string, any>
   }
 
+  type ChatInfoResVo = {
+    /** 对话 id */
+    id?: string
+    /** 对话内容 */
+    message?: string
+    /** 对话类型 */
+    messageType?: string
+    /** 应用 id */
+    appId?: string
+    /** 用户 id */
+    userId?: string
+    /** 创建时间 */
+    createTime?: string
+  }
+
+  type ChatQueryReqVo = {
+    /** 页码，从 1 开始 */
+    pageNo: number
+    /** 每页条数，最大值为 100 */
+    pageSize: number
+    /** 排序方式 */
+    orderBy?: string
+    /** 应用ID */
+    appId: string
+    /** 用户 id */
+    userId?: string
+    /** 创建时间 */
+    createTime?: string
+  }
+
   type deleteUsingDELETEParams = {
     id: string
   }
@@ -211,6 +241,10 @@ declare namespace API {
     id: string
   }
 
+  type list1Params = {
+    reqVo: ChatQueryReqVo
+  }
+
   type PageResponseAppInfoAdminResVo = {
     message?: string
     code?: number
@@ -221,6 +255,12 @@ declare namespace API {
     message?: string
     code?: number
     data?: PageResVoAppInfoCommonResVo
+  }
+
+  type PageResponseChatInfoResVo = {
+    message?: string
+    code?: number
+    data?: PageResVoChatInfoResVo
   }
 
   type PageResponseString = {
@@ -250,6 +290,12 @@ declare namespace API {
   type PageResVoAppInfoCommonResVo = {
     totalRow?: string
     list?: AppInfoCommonResVo[]
+    totalPage?: string
+  }
+
+  type PageResVoChatInfoResVo = {
+    totalRow?: string
+    list?: ChatInfoResVo[]
     totalPage?: string
   }
 

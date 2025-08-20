@@ -397,15 +397,27 @@ const handleLogoMouseLeave = () => {
   isVisibleOfDrawer.value = false
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 进入页面后初始化数据
   // 1. 获取应用 id
   if (!route.query.appId) {
     message.error('该应用或许不存在')
-    router.push('/')
+    await router.push('/')
   }
   const appId = route.query.appId as string
-  initByAppId(appId)
+  await initByAppId(appId)
+
+  if (!route.query.userMessage && !route.query.action) {
+    // 只有存在用户消息并且action为1时才处理
+    return
+  }
+  const userMessage = route.query.userMessage as string
+  const userMsg = buildMessage('user', userMessage, false)
+  chat.messages.value.push(userMsg)
+  const action = Number(route.query.action)
+  if (userMessage && action === 1) {
+    await startCodeGeneration(userMessage)
+  }
 })
 
 /**
@@ -418,13 +430,6 @@ const initByAppId = async (currentAppId: string) => {
   await getAppInfo(currentAppId)
   action.value = Number(route.query.action) || 0
   await getPreviewStatus(currentAppId)
-  if (!route.query.userMessage && action.value !== 1) {
-    // 只有存在用户消息并且action为1时才处理
-    return
-  }
-  const userMessage = route.query.userMessage as string
-  const userMsg = buildMessage('user', userMessage, true)
-  chat.messages.value.push(userMsg)
 }
 
 /**
@@ -478,7 +483,9 @@ const getPreviewStatus = async (currentAppId: string) => {
 }
 
 const startCodeGeneration = async (messageContent: string) => {
+  console.log(appId.value, messageContent)
   if (!appId.value) return
+  console.log('开始生成代码')
   let eventSource: EventSource | null = null
   let streamCompleted = false
 
@@ -489,12 +496,14 @@ const startCodeGeneration = async (messageContent: string) => {
   chat.currentMessageId.value = aiMessage.id
   chat.isLoading.value = true
   chat.currentMessageIndex.value = chat.messages.value.length - 1
+  generatingTextIndex.value += 1
 
   await nextTick()
   scrollToBottom()
 
   const url = `${BASE_URL}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
   eventSource = new EventSource(url, { withCredentials: true })
+  console.log('eventSource', eventSource)
 
   setTimeout(
     () => handleGenerationError('生成超时，请重试', generatingTextIndex.value),

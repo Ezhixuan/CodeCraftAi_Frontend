@@ -7,10 +7,12 @@ import * as yingyongkongzhiqi from './yingyongkongzhiqi'
 import * as yingyongkongzhiqiguanliyuan from './yingyongkongzhiqiguanliyuan'
 import * as jiankangjiancha from './jiankangjiancha'
 import * as jingtaiziyuanbushukongzhiqi from './jingtaiziyuanbushukongzhiqi'
+import * as duihualishi from './duihualishi'
 export default {
   yonghukongzhiqi,
   yingyongkongzhiqi,
   yingyongkongzhiqiguanliyuan,
   jiankangjiancha,
   jingtaiziyuanbushukongzhiqi,
+  duihualishi,
 }
