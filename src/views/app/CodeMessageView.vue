@@ -99,14 +99,6 @@
           </div>
         </div>
       </a-drawer>
-      <a-alert
-        v-if="errorMessage"
-        :message="errorMessage"
-        type="error"
-        closable
-        @close="clearErrorMessage"
-        class="error-alert"
-      />
 
       <div class="main-content">
         <div class="left-panel">
@@ -341,7 +333,6 @@ const preview = {
 
 const isVisibleOfDrawer = ref(false)
 const newMessage = ref('')
-const errorMessage = ref('')
 const deployProgress = ref('准备部署环境...')
 const messageListRef = ref<HTMLElement | null>(null)
 const navKey = ref('0')
@@ -365,7 +356,7 @@ const generatingTexts = [
 ]
 
 const appId = computed(() => {
-  return app.value?.id || route.params.appId as string
+  return app.value?.id || (route.params.appId as string)
 })
 
 const appInfo = computed(() => {
@@ -522,8 +513,8 @@ const getPreviewStatus = async (currentAppId: string) => {
  * @param isLoadMore 是否为加载更多模式
  * @param currentAppId
  */
-const loadChatHistory = async (isLoadMore = false, currentAppId:string) => {
-  console.log("history", currentAppId)
+const loadChatHistory = async (isLoadMore = false, currentAppId: string) => {
+  console.log('history', currentAppId)
   if (!currentAppId) return
 
   console.log(currentAppId)
@@ -532,7 +523,7 @@ const loadChatHistory = async (isLoadMore = false, currentAppId:string) => {
     chat.isLoadingHistory.value = false
     chat.hasMoreHistory.value = true
   }
-  console.log("history", chat.isLoadingHistory.value || (!isLoadMore && !chat.hasMoreHistory.value))
+  console.log('history', chat.isLoadingHistory.value || (!isLoadMore && !chat.hasMoreHistory.value))
 
   // 防止重复加载
   if (chat.isLoadingHistory.value || (!isLoadMore && !chat.hasMoreHistory.value)) {
@@ -614,11 +605,58 @@ const removeActionParam = async () => {
 
 const startCodeGeneration = async (messageContent: string) => {
   console.log(appId.value, messageContent)
-  if (!appId.value) return
+  if (!appId.value) {
+    console.warn('appId 为空，无法生成代码')
+    return
+  }
+
   console.log('开始生成代码')
   let eventSource: EventSource | null = null
   let streamCompleted = false
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
 
+  // 资源清理函数
+  const cleanupResources = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+      timeoutId = null
+    }
+    if (eventSource) {
+      eventSource.close()
+      eventSource = null
+    }
+    chat.isLoading.value = false
+  }
+
+  // 统一错误处理
+  const handleError = (errorMessage: string) => {
+    if (streamCompleted) return
+
+    streamCompleted = true
+    cleanupResources()
+    handleGenerationError(errorMessage, chat.currentMessageIndex.value)
+  }
+
+  // 成功完成处理
+  const handleSuccess = () => {
+    if (streamCompleted) return
+
+    streamCompleted = true
+    cleanupResources()
+
+    // 延迟更新预览，确保后端处理结束
+    setTimeout(async () => {
+      if (appId.value) {
+        try {
+          await handlePreview()
+        } catch (previewError) {
+          console.error('预览更新失败:', previewError)
+        }
+      }
+    }, 1000)
+  }
+
+  // 初始化UI状态
   preview.preview.value = false
 
   const aiMessage = buildMessage('ai', '', true)
@@ -626,67 +664,81 @@ const startCodeGeneration = async (messageContent: string) => {
   chat.currentMessageId.value = aiMessage.id
   chat.isLoading.value = true
   chat.currentMessageIndex.value = chat.messages.value.length - 1
-  generatingTextIndex.value += 1
 
   await nextTick()
   scrollToBottom()
 
-  const url = `${BASE_URL}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
-  eventSource = new EventSource(url, { withCredentials: true })
-  console.log('eventSource', eventSource)
+  try {
+    const url = `${BASE_URL}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
+    eventSource = new EventSource(url, { withCredentials: true })
+    console.log('EventSource 已创建', eventSource)
 
-  setTimeout(
-    () => handleGenerationError('生成超时，请重试', generatingTextIndex.value),
-    10 * 60 * 1000,
-  ) // 10 minutes
+    // 设置超时定时器
+    timeoutId = setTimeout(() => handleError('生成超时，请重试'), 10 * 60 * 1000)
 
-  let fullContent = ''
+    let fullContent = ''
 
-  eventSource.onmessage = function (event) {
-    if (streamCompleted) return
-    try {
-      const data = JSON.parse(event.data)
-      const content = data.d
-      if (content !== undefined && content !== null) {
-        fullContent += content
-        chat.messages.value[generatingTextIndex.value].content = fullContent
-        chat.messages.value[generatingTextIndex.value].isLoading = false
-        scrollToBottom()
+    eventSource.onmessage = function (event) {
+      if (streamCompleted) return
+
+      try {
+        const data = JSON.parse(event.data)
+        const content = data.d
+
+        if (content !== undefined && content !== null) {
+          fullContent += content
+          const currentMessage = chat.messages.value[chat.currentMessageIndex.value]
+          if (currentMessage) {
+            currentMessage.content = fullContent
+            currentMessage.isLoading = false
+            scrollToBottom()
+          }
+        }
+      } catch (error) {
+        console.error('处理SSE消息失败:', error)
+        handleError('处理SSE消息失败')
       }
-    } catch (error) {
-      console.error('处理SSE消息失败:', error)
-      handleGenerationError('处理SSE消息失败', generatingTextIndex.value)
     }
-  }
 
-  // 处理 done 事件
-  eventSource.addEventListener('done', function () {
-    if (streamCompleted) return
+    // 处理 done 事件
+    eventSource.addEventListener('done', function () {
+      console.log('收到 done 事件，代码生成完成')
+      handleSuccess()
+    })
 
-    streamCompleted = true
-    chat.isLoading.value = false
-    eventSource.close()
+    // 处理 error 事件
+    eventSource.onerror = function (error) {
+      console.error('EventSource 错误:', error)
 
-    // 延迟更新预览,确保后端处理结束
-    setTimeout(async () => {
-      if (appId.value) {
-        await handlePreview()
+      if (streamCompleted) return
+
+      // 检查连接状态
+      if (eventSource && eventSource.readyState === EventSource.CONNECTING) {
+        // 连接中，可能是重连，不立即报错
+        console.log('EventSource 正在重新连接...')
+      } else {
+        handleError('生成失败，请重试')
       }
-    }, 1000)
-  })
-
-  // 处理异常事件
-  eventSource.onerror = function () {
-    if (streamCompleted || !chat.isLoading.value) return
-    // 检查链接是否关闭
-    if (eventSource.readyState === eventSource.CONNECTING) {
-      streamCompleted = true
-      chat.isLoading.value = false
-      eventSource.close()
-    } else {
-      handleGenerationError('生成失败，请重试', generatingTextIndex.value)
     }
+
+    // 添加连接打开事件
+    eventSource.addEventListener('open', function () {
+      console.log('EventSource 连接已建立')
+    })
+  } catch (setupError) {
+    console.error('初始化代码生成失败:', setupError)
+    handleError('初始化失败，请重试')
   }
+}
+
+const handleGenerationError = (message: string, messageIndex: number) => {
+  // 实现错误处理逻辑，比如更新消息内容显示错误
+  if (chat.messages.value[messageIndex]) {
+    chat.messages.value[messageIndex].content = message
+    chat.messages.value[messageIndex].isLoading = false
+  }
+  chat.isLoading.value = false
+  scrollToBottom()
 }
 
 /**
@@ -1101,16 +1153,6 @@ const sendMessage = async () => {
 }
 
 /**
- * 处理异常
- */
-const handleGenerationError = (error: string, index: number) => {
-  errorMessage.value = error
-  chat.isLoading.value = false
-  chat.messages.value[index].content = error
-  chat.messages.value[index].isLoading = false
-}
-
-/**
  * 复制文本
  * @param text 要复制的文本
  */
@@ -1137,13 +1179,6 @@ const regenerateResponse = async (messageIndex: number) => {
     chat.messages.value = chat.messages.value.slice(0, chat.messages.value.indexOf(userMessage) + 1)
     await startCodeGeneration(userMessage.content)
   }
-}
-
-/**
- * 清空错误信息
- */
-const clearErrorMessage = () => {
-  errorMessage.value = ''
 }
 
 /**
