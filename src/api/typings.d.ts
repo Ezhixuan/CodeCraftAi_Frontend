@@ -23,6 +23,10 @@ declare namespace API {
     id: string
   }
 
+  type adminListParams = {
+    reqVo: ChatQueryReqVo
+  }
+
   type AppGenerateReqVo = {
     /** 初始化提示 */
     initPrompt: string
@@ -191,12 +195,18 @@ declare namespace API {
     pageSize: number
     /** 排序方式 */
     orderBy?: string
+    /** 对话 id */
+    id?: string
     /** 应用ID */
     appId: string
     /** 用户 id */
     userId?: string
+    /** 消息类型 */
+    messageType?: string
     /** 创建时间 */
-    createTime?: string
+    startTime?: string
+    /** 结束时间 */
+    endTime?: string
   }
 
   type deleteUsingDELETEParams = {

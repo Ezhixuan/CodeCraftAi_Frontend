@@ -51,7 +51,7 @@
         <p class="info-description">{{ computedInfoDescription }}</p>
         <div v-if="currentAppInfo?.userInfo" class="info-user">
           <UserAvatar
-            :user-id="currentAppInfo.userInfo.id"
+            :user-info="currentAppInfo.userInfo"
             show-name
             size="small"
             name-color="#ffffff"
@@ -77,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect, onMounted, computed } from 'vue'
+import { computed, onMounted, ref, watchEffect } from 'vue'
 import { getInfo } from '@/api/yingyongkongzhiqi'
 import UserAvatar from './UserAvatarComponent.vue'
 

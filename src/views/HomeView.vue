@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { doGenerate, getFeaturedList, getList } from '@/api/yingyongkongzhiqi'
 import { useLoginUserStore } from '@/stores/loginUser'
@@ -218,14 +218,12 @@ const handleAppCardClick = (app: API.AppInfoCommonResVo) => {
       path: '/app/code-message',
       query: {
         appId: app.id,
-        action: 'view',
         userId: loginUserStore.loginUser.id,
       },
     })
-  }catch (error) {
-    console.error("应用跳转失败",error)
+  } catch (error) {
+    console.error('应用跳转失败', error)
   }
-
 }
 </script>
 

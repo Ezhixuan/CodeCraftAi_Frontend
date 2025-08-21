@@ -4,10 +4,15 @@ import type { ManipulateType } from 'dayjs';
 /**
  * 格式化时间为 YYYY-MM-DD HH:mm:ss
  * @param date 需要格式化的时间（默认当前时间）
+ * @param format
  * @returns 格式化后的时间字符串
  */
-export const formatDate = (date: Date | string | number = new Date()): string => {
-  return dayjs(date).format('YYYY-MM-DDTHH:mm:ss');
+export const formatDate = (date: Date | string | number = new Date(), format: string = 'YYYY-MM-DDTHH:mm:ss'): string => {
+  return dayjs(date).format(format);
+};
+
+export const getDefaultFormat = (): string => {
+  return 'YYYY-MM-DDTHH:mm:ss';
 };
 
 /**
@@ -119,5 +124,6 @@ export default {
   getCurrentFormatted,
   getFormattedPreviousPeriod,
   getFormattedNextPeriod,
+  getDefaultFormat,
   formatAppTime
 };

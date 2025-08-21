@@ -1,7 +1,7 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
@@ -52,6 +52,16 @@ const router = createRouter({
       path: '/admin/apps',
       name: 'admin-apps',
       component: () => import('@/views/app/admin/AppManagerView.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
+    },
+    // 管理员对话历史管理页面
+    {
+      path: '/admin/chat-history',
+      name: 'admin-chat-history',
+      component: () => import('@/views/chat/admin/ChatHistoryManagerView.vue'),
       meta: {
         requiresAuth: true,
         requiresAdmin: true,

@@ -58,6 +58,14 @@ export const menuConfig: MenuItem[] = [
         roles: ['ADMIN'], // 仅管理员可见
         order: 2,
       },
+      {
+        key: '/admin/chat-history',
+        label: '对话历史管理',
+        title: '对话历史管理',
+        path: '/admin/chat-history',
+        roles: ['ADMIN'], // 仅管理员可见
+        order: 3,
+      },
     ],
   },
 ]
