@@ -141,7 +141,7 @@
                     v-if="!chat.isLoadingHistory.value"
                     type="dashed"
                     block
-                    @click="loadChatHistory(true)"
+                    @click="loadChatHistory(true, appId)"
                     class="load-more-btn"
                   >
                     <template #icon><ReloadOutlined /></template>
@@ -339,7 +339,6 @@ const preview = {
   progressText: ref(''),
 }
 
-const action = ref<number>(0)
 const isVisibleOfDrawer = ref(false)
 const newMessage = ref('')
 const errorMessage = ref('')
@@ -366,7 +365,7 @@ const generatingTexts = [
 ]
 
 const appId = computed(() => {
-  return app.value?.id
+  return app.value?.id || route.params.appId as string
 })
 
 const appInfo = computed(() => {
@@ -437,9 +436,6 @@ onMounted(async () => {
   const appId = route.query.appId as string
   await initByAppId(appId)
 
-  // 2. 加载对话历史
-  await loadChatHistory()
-
   // 3. 检查URL参数action是否等于1
   const actionParam = Number(route.query.action)
   if (actionParam === 1) {
@@ -467,7 +463,7 @@ onMounted(async () => {
 const initByAppId = async (currentAppId: string) => {
   console.log(currentAppId)
   await getAppInfo(currentAppId)
-  action.value = Number(route.query.action) || 0
+  await loadChatHistory(false, currentAppId)
   await getPreviewStatus(currentAppId)
 }
 
@@ -524,9 +520,19 @@ const getPreviewStatus = async (currentAppId: string) => {
 /**
  * 加载对话历史
  * @param isLoadMore 是否为加载更多模式
+ * @param currentAppId
  */
-const loadChatHistory = async (isLoadMore = false) => {
-  if (!appId.value) return
+const loadChatHistory = async (isLoadMore = false, currentAppId:string) => {
+  console.log("history", currentAppId)
+  if (!currentAppId) return
+
+  console.log(currentAppId)
+  if (!isLoadMore) {
+    // 重置状态
+    chat.isLoadingHistory.value = false
+    chat.hasMoreHistory.value = true
+  }
+  console.log("history", chat.isLoadingHistory.value || (!isLoadMore && !chat.hasMoreHistory.value))
 
   // 防止重复加载
   if (chat.isLoadingHistory.value || (!isLoadMore && !chat.hasMoreHistory.value)) {
@@ -539,13 +545,13 @@ const loadChatHistory = async (isLoadMore = false) => {
     const queryParams: API.ChatQueryReqVo = {
       pageNo: 1,
       pageSize: chat.historyPageSize.value,
-      appId: appId.value,
-      orderBy: 'desc',
+      appId: currentAppId,
+      orderBy: 'asc',
     }
 
     // 如果是加载更多，添加时间游标
     if (isLoadMore && chat.lastCreateTime.value) {
-      queryParams.createTime = DateUtil.formatDate(chat.lastCreateTime.value)
+      queryParams.endTime = DateUtil.formatDate(chat.lastCreateTime.value)
     }
 
     const response = await list1({ reqVo: queryParams })
@@ -779,7 +785,7 @@ const handleChatScroll = (event: Event) => {
 
   // 检查是否滚动到顶部附近（距离顶部50px以内）
   if (target.scrollTop <= 50 && chat.hasMoreHistory.value && !chat.isLoadingHistory.value) {
-    loadChatHistory(true)
+    loadChatHistory(true, appId.value)
   }
 }
 
@@ -955,10 +961,6 @@ const performSupplementQuery = async () => {
     // 补全查询失败不影响主流程，只记录错误
   }
 }
-
-// checkAndAutoLoad方法已移除，因为performSupplementQuery机制已能直接解决数据不足问题
-
-// resetAutoLoadAttempts方法已移除，因为自动加载机制已被简化
 
 /**
  * 处理加载错误的恢复机制
