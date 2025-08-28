@@ -57,7 +57,7 @@ const router = createRouter({
         requiresAdmin: true,
       },
     },
-    // 管理员对话历史管理页面
+    // 管理员聊天记录管理页面
     {
       path: '/admin/chat-history',
       name: 'admin-chat-history',
@@ -66,6 +66,12 @@ const router = createRouter({
         requiresAuth: true,
         requiresAdmin: true,
       },
+    },
+    // 按钮样式测试页面
+    {
+      path: '/test/button-styles',
+      name: 'button-style-test',
+      component: () => import('@/views/ButtonStyleTest.vue'),
     },
   ],
 })

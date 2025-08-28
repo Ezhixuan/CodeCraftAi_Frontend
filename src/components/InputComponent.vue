@@ -1,87 +1,146 @@
 <template>
-  <div
-    :class="['dark-tech-input-wrapper', { 'is-focused': isFocused, 'is-disabled': disabled }]"
-    :style="wrapperStyle"
-  >
-    <div class="input-area" :style="inputAreaStyle">
-      <input
-        v-if="!multiline"
-        type="text"
-        :value="currentValue"
-        :placeholder="currentPlaceholder"
+  <!-- 外层容器 -->
+  <div class="input-container">
+    <!-- 输入框区域 -->
+    <div
+      :class="['input-wrapper', { 'is-focused': isFocused, 'is-disabled': disabled }]"
+      :style="wrapperStyle"
+    >
+      <!-- 核心输入框组件 -->
+      <BaseInputComponent
+        :model-value="modelValue"
+        :default-value="defaultValue"
+        :placeholder="placeholder"
+        :width="width"
+        :height="height"
+        :font-size="fontSize"
         :disabled="disabled"
-        class="dark-tech-input-element"
-        :style="inputElementStyle"
-        @input="handleInput"
-        @focus="handleFocus"
-        @blur="handleBlur"
-        @keyup.enter="handleSubmit"
-      />
-      <textarea
-        v-else
-        ref="textareaRef"
-        :value="currentValue"
-        :placeholder="currentPlaceholder"
-        :disabled="disabled"
+        :icon="icon"
+        :enable-typewriter="enableTypewriter"
+        :placeholder-array="placeholderArray"
+        :typewriter-speed="typewriterSpeed"
+        :typewriter-delay="typewriterDelay"
+        :background-color="backgroundColor"
+        :text-color="textColor"
+        :placeholder-color="placeholderColor"
+        :multiline="multiline"
         :rows="rows"
-        :class="['dark-tech-input-element', { 'auto-height': autoHeight }]"
-        :style="inputElementStyle"
-        @input="handleInput"
+        :max-rows="maxRows"
+        :resize="resize"
+        :auto-height="autoHeight"
+        :padding-bottom="paddingBottom"
+        @update:model-value="handleInputChange"
         @focus="handleFocus"
         @blur="handleBlur"
-        @keyup.ctrl.enter="handleSubmit"
+        @submit="handleSubmit"
       />
-      <div v-if="icon" class="input-icon">
-        <component :is="icon" />
+
+      <!-- 提交按钮 - 右下角 -->
+      <div class="submit-area">
+        <button
+          :class="['submit-button', { 'disabled': required && !currentValue.trim() }]"
+          :disabled="disabled || (required && !currentValue.trim())"
+          @click="handleSubmit"
+        >
+          <component :is="submitIcon" v-if="submitIcon" />
+          <span v-if="props.submitButtonText">{{ props.submitButtonText }}</span>
+        </button>
       </div>
-      <div v-if="showSubmitButton || showFeatureTools" class="action-area">
-        <div class="feature-tools">
-          <div
-            v-if="showFeatureTools"
-            class="feature-tool optimize-tool"
-            @click="handleOptimize"
-            title="优化"
-          >
-            <svg
-              class="tool-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </div>
-        </div>
-        <div v-if="showSubmitButton" class="submit-button" @click="handleSubmit">
-          <span class="submit-text">{{ submitButtonText }}</span>
-        </div>
+
+      <!-- 工具栏区域 - 左下角 -->
+      <div class="tools-area">
+        <FeatureToolsComponent
+          :show-optimize-button="showOptimizeButton"
+          :optimize-icon="optimizeIcon"
+          :optimize-text="optimizeText"
+          :is-optimizing="isOptimizing"
+          :show-dropdown-tool="showDropdownTool"
+          :dropdown-icon="dropdownIcon"
+          :dropdown-text="dropdownText"
+          :dropdown-options="dropdownOptions"
+          :dropdown-value="dropdownValue"
+          :dropdown-placeholder="dropdownPlaceholder"
+          :disabled="disabled"
+          @optimize="handleOptimize"
+          @update:dropdown-value="handleDropdownChange"
+          @dropdown-change="handleDropdownSelect"
+        />
       </div>
     </div>
 
-    <div v-if="showPresetPrompts && presetPrompts.length > 0" class="preset-prompts-container">
-      <button
-        v-for="prompt in presetPrompts"
-        :key="prompt.key"
-        class="preset-prompt-button"
-        :style="promptButtonStyle"
-        @click="handlePromptClick(prompt.value)"
-      >
-        {{ prompt.key }}
-      </button>
-    </div>
+    <!-- 预设提示词区域 - 输入框外部正下方 -->
+    <PresetPromptsComponent
+      :show-preset-prompts="showPresetPrompts"
+      :preset-prompts="presetPrompts"
+      :selected-prompt="selectedPrompt"
+      :title="presetPromptsTitle"
+      :subtitle="presetPromptsSubtitle"
+      :disabled="disabled"
+      :max-columns="presetPromptsMaxColumns"
+      :min-button-height="presetPromptsMinHeight"
+      :max-height="undefined"
+      @prompt-select="handlePromptSelect"
+      @update:selected-prompt="handleSelectedPromptChange"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { Component, CSSProperties } from 'vue'
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
+import BaseInputComponent from './BaseInputComponent.vue'
+import FeatureToolsComponent from './FeatureToolsComponent.vue'
+import PresetPromptsComponent from './PresetPromptsComponent.vue'
 
-// Props 和 Emits 定义与之前相同，此处省略以保持简洁...
+// 预设提示词接口
+interface PresetPrompt {
+  label: string
+  value: string
+  description?: string
+  icon?: Component
+  category?: string
+}
+
+// 定义下拉选择框选项的类型
+interface DropdownOption {
+  label: string
+  value: string | number
+}
+
+// 按钮样式配置接口
+interface ButtonStyleConfig {
+  width?: string
+  height?: string
+  minWidth?: string
+  minHeight?: string
+  backgroundColor?: string
+  borderColor?: string
+  textColor?: string
+  fontSize?: string
+  fontWeight?: string
+  borderRadius?: string
+  padding?: string
+  borderWidth?: string
+  // hover状态样式
+  hoverBackgroundColor?: string
+  hoverBorderColor?: string
+  hoverTextColor?: string
+  hoverTransform?: string
+  // 其他效果
+  boxShadow?: string
+  backdropFilter?: string
+  transition?: string
+}
+
+// 按钮样式集合接口
+interface ButtonStyles {
+  submit?: ButtonStyleConfig
+  tool?: ButtonStyleConfig
+  preset?: ButtonStyleConfig
+  // 全局配置，会被具体类型覆盖
+  global?: ButtonStyleConfig
+}
+
 interface Props {
   modelValue?: string
   defaultValue?: string
@@ -91,9 +150,6 @@ interface Props {
   fontSize?: string | number
   disabled?: boolean
   icon?: Component
-  showSubmitButton?: boolean
-  showFeatureTools?: boolean
-  submitButtonText?: string
   enableTypewriter?: boolean
   placeholderArray?: string[]
   typewriterSpeed?: number
@@ -106,22 +162,36 @@ interface Props {
   maxRows?: number
   resize?: 'none' | 'both' | 'horizontal' | 'vertical'
   autoHeight?: boolean
-  /** 是否显示预设提示词 */
+  paddingBottom?: string
+  
+  // 提交按钮相关
+  submitIcon?: Component
+  submitButtonText?: string
+  required?: boolean
+  
+  // 工具栏相关
+  showOptimizeButton?: boolean
+  optimizeIcon?: Component
+  optimizeText?: string
+  isOptimizing?: boolean
+  showDropdownTool?: boolean
+  dropdownIcon?: Component
+  dropdownText?: string
+  dropdownOptions?: DropdownOption[]
+  dropdownValue?: string | number
+  dropdownPlaceholder?: string
+  
+  // 预设提示词相关
   showPresetPrompts?: boolean
-  /** 预设提示词数组，格式为 { key: string, value: string }[] */
   presetPrompts?: PresetPrompt[]
-  /** 提示词按钮文字颜色 */
-  promptTextColor?: string
-  /** 提示词按钮背景颜色 */
-  promptBackgroundColor?: string
-  /** 提示词按钮文字大小 */
-  promptFontSize?: string | number
-}
-
-// 定义 presetPrompts 数组中对象的类型
-interface PresetPrompt {
-  key: string
-  value: string
+  selectedPrompt?: string
+  presetPromptsTitle?: string
+  presetPromptsSubtitle?: string
+  presetPromptsMaxColumns?: number
+  presetPromptsMinHeight?: string
+  
+  // 按钮样式配置
+  buttonStyles?: ButtonStyles
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -133,9 +203,6 @@ const props = withDefaults(defineProps<Props>(), {
   fontSize: '16px',
   disabled: false,
   icon: undefined,
-  showSubmitButton: false,
-  showFeatureTools: false,
-  submitButtonText: '提交',
   enableTypewriter: false,
   placeholderArray: () => [],
   typewriterSpeed: 100,
@@ -148,224 +215,283 @@ const props = withDefaults(defineProps<Props>(), {
   maxRows: 10,
   resize: 'vertical',
   autoHeight: false,
+  paddingBottom: '16px',
+  
+  // 提交按钮相关
+  submitButtonText: '',
+  required: true,
+  
+  // 工具栏相关
+  showOptimizeButton: false,
+  optimizeText: '优化',
+  isOptimizing: false,
+  showDropdownTool: false,
+  dropdownText: '选择',
+  dropdownOptions: () => [],
+  dropdownValue: undefined,
+  dropdownPlaceholder: '请选择...',
+  
+  // 预设提示词相关
   showPresetPrompts: false,
   presetPrompts: () => [],
-  promptTextColor: '#E0E0E0',
-  promptBackgroundColor: 'rgba(255, 255, 255, 0.1)',
-  promptFontSize: '12px',
+  selectedPrompt: '',
+  presetPromptsTitle: '预设提示词',
+  presetPromptsSubtitle: '选择一个预设提示词快速开始',
+  presetPromptsMaxColumns: 3,
+  presetPromptsMinHeight: '32px',
+  
+  // 按钮样式配置
+  buttonStyles: () => ({}),
 })
+
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  'update:dropdownValue': [value: string | number]
+  'update:selectedPrompt': [value: string]
   focus: [event: FocusEvent]
   blur: [event: FocusEvent]
   submit: [value: string]
   optimize: [value: string]
+  'prompt-select': [value: string]
+  'dropdown-change': [option: DropdownOption]
 }>()
 
 const isFocused = ref(false)
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const currentPlaceholderIndex = ref(0)
-const displayText = ref('')
-const typewriterTimer = ref<number | null>(null)
-
-// --- 计算属性 ---
-
 const currentValue = computed(() => props.modelValue || props.defaultValue)
 
-const typewriterTextArray = computed(() => {
-  if (props.placeholderArray.length > 0) return props.placeholderArray
-  if (props.placeholder) return [props.placeholder]
-  return []
-})
-
-const currentPlaceholder = computed(() => {
-  if (props.enableTypewriter && typewriterTextArray.value.length > 0) {
-    return displayText.value
-  }
-  return props.placeholder
-})
+// 注释：PresetPromptsComponent现在在外部容器中，不再需要高度限制
 
 /**
- * @description 计算【整体包裹层】的动态样式
+ * 生成按钮样式的CSS变量
+ * 支持全局配置和特定类型配置的合并
  */
+const buttonCSSVariables = computed(() => {
+  const variables: Record<string, string> = {}
+  
+  // 默认样式配置
+  const defaultStyles = {
+    submit: {
+      width: 'auto',
+      height: '32px',
+      minWidth: '32px',
+      backgroundColor: 'rgba(0, 212, 255, 0.1)',
+      borderColor: 'rgba(0, 212, 255, 0.3)',
+      textColor: 'white',
+      fontSize: '14px',
+      fontWeight: '500',
+      borderRadius: '6px',
+      padding: '0 12px',
+      borderWidth: '1px',
+      hoverBackgroundColor: 'rgba(0, 212, 255, 0.2)',
+      hoverBorderColor: 'rgba(0, 212, 255, 0.5)',
+      hoverTransform: 'translateY(-2px)',
+      boxShadow: '0 4px 12px rgba(0, 212, 255, 0.2)',
+      backdropFilter: 'blur(10px)',
+      transition: 'all 0.3s ease'
+    },
+    tool: {
+      width: '32px',
+      height: '32px',
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textColor: 'rgba(255, 255, 255, 0.6)',
+      fontSize: '14px',
+      fontWeight: '500',
+      borderRadius: '6px',
+      padding: '8px 12px',
+      borderWidth: '1px',
+      hoverBackgroundColor: 'rgba(0, 212, 255, 0.1)',
+      hoverBorderColor: 'rgba(0, 212, 255, 0.3)',
+      hoverTextColor: '#00d4ff',
+      hoverTransform: 'translateY(-2px)',
+      boxShadow: '0 4px 12px rgba(0, 212, 255, 0.1)',
+      backdropFilter: 'blur(10px)',
+      transition: 'all 0.3s ease'
+    },
+    preset: {
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textColor: 'rgba(255, 255, 255, 0.8)',
+      fontSize: '14px',
+      fontWeight: '500',
+      borderRadius: '8px',
+      padding: '16px',
+      borderWidth: '1px',
+      hoverBackgroundColor: 'rgba(255, 255, 255, 0.08)',
+      hoverBorderColor: 'rgba(0, 212, 255, 0.3)',
+      hoverTextColor: 'rgba(255, 255, 255, 0.95)',
+      hoverTransform: 'translateY(-1px)',
+      transition: 'all 0.2s ease'
+    }
+  }
+  
+  // 合并用户配置和默认配置
+  const mergeStyles = (type: keyof typeof defaultStyles) => {
+    const globalConfig = props.buttonStyles?.global || {}
+    const typeConfig = props.buttonStyles?.[type] || {}
+    return { ...defaultStyles[type], ...globalConfig, ...typeConfig }
+  }
+  
+  // 生成各类型按钮的CSS变量
+  const buttonTypes = ['submit', 'tool', 'preset'] as const
+  buttonTypes.forEach(type => {
+    const styles = mergeStyles(type)
+    Object.entries(styles).forEach(([key, value]) => {
+      // 将驼峰命名转换为CSS变量命名
+      const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase()
+      variables[`--button-${type}-${cssKey}`] = value
+    })
+  })
+  
+  return variables
+})
+
 const wrapperStyle = computed<CSSProperties>(() => ({
   width: typeof props.width === 'number' ? `${props.width}px` : props.width,
   backgroundColor: props.backgroundColor,
   '--placeholder-color': props.placeholderColor,
-  // 当自动高度时，总高度由内容决定
   minHeight: props.autoHeight
     ? undefined
     : typeof props.height === 'number'
       ? `${props.height}px`
       : props.height,
+  // 合并按钮CSS变量
+  ...buttonCSSVariables.value,
 }))
 
-/**
- * @description 计算【输入区域】的动态样式
- */
-const inputAreaStyle = computed<CSSProperties>(() => ({
-  height: props.autoHeight
-    ? 'auto'
-    : typeof props.height === 'number'
-      ? `${props.height}px`
-      : props.height,
-  minHeight: props.multiline ? `${props.rows * 1.6}em` : undefined,
-  maxHeight: props.multiline && props.autoHeight ? `${props.maxRows * 1.6}em` : undefined,
-}))
-
-/**
- * @description 计算【内部输入元素】的动态样式
- */
-const inputElementStyle = computed<CSSProperties>(() => ({
-  fontSize: typeof props.fontSize === 'number' ? `${props.fontSize}px` : props.fontSize,
-  color: props.textColor,
-  resize: props.multiline ? props.resize : 'none',
-  paddingBottom: props.showSubmitButton || props.showFeatureTools ? '52px' : '16px',
-}))
-
-/**
- * @description 计算【预设提示词按钮】的动态样式
- */
-const promptButtonStyle = computed<CSSProperties>(() => ({
-  color: props.promptTextColor,
-  backgroundColor: props.promptBackgroundColor,
-  fontSize:
-    typeof props.promptFontSize === 'number' ? `${props.promptFontSize}px` : props.promptFontSize,
-}))
-
-// --- 方法 ---
-
-/**
- * @description 处理点击预设提示词按钮的事件
- */
-const handlePromptClick = (value: string) => {
+// 事件处理方法
+const handleInputChange = (value: string) => {
   emit('update:modelValue', value)
-  // 点击后自动聚焦到输入框，优化体验
-  textareaRef.value?.focus()
-}
-
-const startTypewriter = () => {
-  if (!props.enableTypewriter || isFocused.value || typewriterTextArray.value.length === 0) return
-  stopTypewriter()
-  displayText.value = ''
-  const textArray = typewriterTextArray.value
-  const currentText = textArray[currentPlaceholderIndex.value]
-  let charIndex = 0
-  const typeNextChar = () => {
-    if (charIndex < currentText.length) {
-      displayText.value += currentText[charIndex]
-      charIndex++
-      typewriterTimer.value = window.setTimeout(typeNextChar, props.typewriterSpeed)
-    } else {
-      typewriterTimer.value = window.setTimeout(() => {
-        currentPlaceholderIndex.value = (currentPlaceholderIndex.value + 1) % textArray.length
-        startTypewriter()
-      }, props.typewriterDelay)
-    }
-  }
-  typeNextChar()
-}
-
-const stopTypewriter = () => {
-  if (typewriterTimer.value) clearTimeout(typewriterTimer.value)
-  typewriterTimer.value = null
-}
-
-const handleInput = (event: Event) => {
-  const target = event.target as HTMLInputElement | HTMLTextAreaElement
-  if (target.value && props.enableTypewriter) {
-    stopTypewriter()
-    displayText.value = ''
-  }
-  emit('update:modelValue', target.value)
-  if (props.multiline && props.autoHeight) {
-    adjustTextareaHeight()
-  }
 }
 
 const handleFocus = (event: FocusEvent) => {
   isFocused.value = true
-  stopTypewriter()
-  displayText.value = ''
   emit('focus', event)
 }
 
 const handleBlur = (event: FocusEvent) => {
   isFocused.value = false
-  if (!currentValue.value && props.enableTypewriter) {
-    setTimeout(() => {
-      if (!isFocused.value) startTypewriter()
-    }, 300)
-  }
   emit('blur', event)
 }
-const handleSubmit = () => emit('submit', currentValue.value)
-const handleOptimize = () => emit('optimize', currentValue.value)
-const adjustTextareaHeight = () => {
-  if (props.autoHeight && textareaRef.value) {
-    const textarea = textareaRef.value
-    textarea.style.height = 'auto'
-    textarea.style.height = `${textarea.scrollHeight}px`
-  }
+
+const handleSubmit = () => {
+  emit('submit', currentValue.value)
 }
 
-// --- 生命周期钩子 & 监听 ---
+const handleOptimize = () => {
+  emit('optimize', currentValue.value)
+}
 
-watch(
-  () => [props.enableTypewriter, typewriterTextArray.value],
-  () => {
-    if (props.enableTypewriter && !isFocused.value && !currentValue.value) {
-      currentPlaceholderIndex.value = 0
-      startTypewriter()
-    } else {
-      stopTypewriter()
-      displayText.value = ''
-    }
-  },
-  { immediate: true },
-)
+const handleDropdownChange = (value: string | number) => {
+  emit('update:dropdownValue', value)
+}
 
-watch(currentValue, () => {
-  if (props.multiline && props.autoHeight) {
-    nextTick(adjustTextareaHeight)
-  }
-})
+const handleDropdownSelect = (option: DropdownOption) => {
+  emit('dropdown-change', option)
+}
 
-onMounted(() => {
-  if (props.enableTypewriter && !currentValue.value) startTypewriter()
-  if (props.multiline && props.autoHeight) nextTick(adjustTextareaHeight)
-})
+const handlePromptSelect = (prompt: PresetPrompt) => {
+  emit('prompt-select', prompt.value)
+  emit('update:modelValue', prompt.value)
+}
 
-onUnmounted(() => {
-  stopTypewriter()
-})
+const handleSelectedPromptChange = (value: string) => {
+  emit('update:selectedPrompt', value)
+}
+
+
 </script>
 
 <style scoped>
-/* 视觉包裹层样式 */
-.dark-tech-input-wrapper {
+/* 外层容器样式 */
+.input-container {
   position: relative;
+  width: 100%;
+}
+
+/* 确保PresetPromptsComponent紧密贴合输入框 */
+.input-container :deep(.preset-prompts) {
+  margin-top: -1px !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-top: none !important;
+}
+
+/* 输入框包装器样式 */
+.input-wrapper {
+  position: relative; /* 确保绝对定位的子元素相对于此容器定位 */
   display: flex;
-  flex-direction: column; /* 垂直布局 */
+  flex-direction: column;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   transition: all 0.3s ease;
   box-sizing: border-box;
-  overflow: hidden; /* 防止子元素圆角溢出 */
+  overflow: visible; /* 修改为visible，允许下拉选项显示在容器外 */
 }
 
-.dark-tech-input-wrapper:hover {
+.input-wrapper:hover {
   border-color: rgba(0, 212, 255, 0.3);
 }
-.dark-tech-input-wrapper:focus-within {
+
+.input-wrapper.is-focused {
   border-color: #00d4ff;
   box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
 }
-.dark-tech-input-wrapper.is-disabled {
+
+.input-wrapper.is-disabled {
   opacity: 0.5;
   background: rgba(255, 255, 255, 0.02);
   cursor: not-allowed;
+}
+
+/* 提交按钮区域 - 移到右下角 */
+.submit-area {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 10;
+}
+
+.submit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--button-submit-min-width, 32px);
+  width: var(--button-submit-width, auto);
+  height: var(--button-submit-height, 32px);
+  padding: var(--button-submit-padding, 0 12px);
+  background: var(--button-submit-background-color, rgba(0, 212, 255, 0.1));
+  border: var(--button-submit-border-width, 1px) solid var(--button-submit-border-color, rgba(0, 212, 255, 0.3));
+  border-radius: var(--button-submit-border-radius, 6px);
+  cursor: pointer;
+  transition: var(--button-submit-transition, all 0.3s ease);
+  backdrop-filter: var(--button-submit-backdrop-filter, blur(10px));
+  color: var(--button-submit-text-color, white);
+  font-size: var(--button-submit-font-size, 14px);
+  font-weight: var(--button-submit-font-weight, 500);
+  box-shadow: var(--button-submit-box-shadow, none);
+}
+
+.submit-button:hover:not(.disabled) {
+  background: var(--button-submit-hover-background-color, rgba(0, 212, 255, 0.2));
+  border-color: var(--button-submit-hover-border-color, rgba(0, 212, 255, 0.5));
+  color: var(--button-submit-hover-text-color, white);
+  transform: var(--button-submit-hover-transform, translateY(-2px));
+  box-shadow: var(--button-submit-hover-box-shadow, 0 4px 12px rgba(0, 212, 255, 0.2));
+}
+
+.submit-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 工具栏区域 - 移到左下角 */
+.tools-area {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 10;
 }
 
 .input-area {
@@ -401,10 +527,10 @@ onUnmounted(() => {
 
 .preset-prompts-container {
   display: flex;
-  flex-wrap: wrap; /* 关键：自动换行 */
-  gap: 8px; /* 按钮之间的间距 */
-  padding: 8px 12px 12px; /* 内部留白 */
-  border-top: 1px solid rgba(255, 255, 255, 0.08); /* 与输入区 slight 分隔 */
+  flex-direction: column;
+  gap: 0; /* 移除间距，让PresetPromptsComponent完全控制自己的布局 */
+  padding: 0; /* 移除内部留白，让PresetPromptsComponent自己控制 */
+  /* 移除border-top，避免与PresetPromptsComponent的border重复 */
 }
 .preset-prompt-button {
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -464,47 +590,14 @@ onUnmounted(() => {
   pointer-events: none;
   height: 24px;
 }
-.action-area {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  pointer-events: none;
-}
-.action-area > * {
-  pointer-events: auto;
-}
+/* 旧的action-area样式已移除，现在使用submit-area和tools-area */
 
 .feature-tools {
   display: flex;
   gap: 8px;
 }
 
-.submit-button {
-  background: rgba(0, 212, 255, 0.1);
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  border-radius: 6px;
-  padding: 6px 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-.submit-text {
-  color: #00d4ff;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.submit-button:hover {
-  background: rgba(0, 212, 255, 0.2);
-  border-color: rgba(0, 212, 255, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
-}
+/* 旧的submit-button样式已移除，使用新的样式定义 */
 
 .feature-tool {
   width: 32px;
@@ -535,12 +628,76 @@ onUnmounted(() => {
   color: #00d4ff;
 }
 
+/* 下拉框工具样式 */
+.dropdown-tool {
+  position: relative;
+}
+
+.dropdown-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  min-width: 120px;
+}
+
+.dropdown-option {
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.dropdown-option:last-child {
+  border-bottom: none;
+}
+
+.dropdown-option:hover {
+  background: rgba(0, 212, 255, 0.1);
+  color: #00d4ff;
+}
+
+.dropdown-option.active {
+  background: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+  font-weight: 500;
+}
+
+/* 下拉选项滚动条样式 */
+.dropdown-options::-webkit-scrollbar {
+  width: 6px;
+}
+.dropdown-options::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+.dropdown-options::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+.dropdown-options::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 @media (max-width: 768px) {
   .dark-tech-input-element {
     font-size: 16px;
   }
   .submit-button {
     padding: 6px 12px;
+    min-width: 28px;
   }
   .submit-text {
     font-size: 12px;

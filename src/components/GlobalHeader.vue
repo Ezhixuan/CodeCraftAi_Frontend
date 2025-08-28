@@ -113,9 +113,7 @@ const processMenuItem = (item: MenuItem, userRole: UserRole): ProcessedMenuItem 
 const menuItems = computed<MenuProps['items']>(() => {
   const userRole = (loginUserStore.loginUser.role as UserRole) || 'GUEST'
 
-  return allMenuItems
-    .map((item) => processMenuItem(item, userRole))
-    .filter(Boolean) // 过滤掉权限不足的菜单项
+  return allMenuItems.map((item) => processMenuItem(item, userRole)).filter(Boolean) // 过滤掉权限不足的菜单项
 })
 
 // 登录处理
@@ -139,7 +137,7 @@ const handleLogout = async () => {
     loginUserStore.logout()
     await router.push('/auth/login')
     message.success('退出登录成功')
-  }catch (error) {
+  } catch (error) {
     message.error('退出登录失败')
     console.error('退出登录失败:', error)
   }

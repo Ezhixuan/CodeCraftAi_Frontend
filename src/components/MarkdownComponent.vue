@@ -16,6 +16,10 @@ import 'prismjs/components/prism-css'
 import 'prismjs/components/prism-json'
 import 'prismjs/components/prism-bash'
 import 'prismjs/components/prism-sql'
+// Vue 语法高亮支持：使用 markup (HTML) + javascript + css 组合
+import "prismjs/components/prism-markup";
+import "prismjs/components/prism-css";
+import "prismjs/components/prism-javascript";
 
 const props = defineProps<{
   content: string

@@ -30,6 +30,10 @@ declare namespace API {
   type AppGenerateReqVo = {
     /** 初始化提示 */
     initPrompt: string
+    /**
+     * 生成类型
+     */
+    codeGenType: string
   }
 
   type AppInfoAdminResVo = {

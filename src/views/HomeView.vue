@@ -18,8 +18,9 @@
             fontSize="16px"
             :required="true"
             :show-submit-button="true"
+            :show-optimize-button="true"
             :disabled="isGenerating"
-            submit-button-text="生成应用"
+            :submit-button-text="isGenerating ? '生成中' : '生成应用'"
             :enable-typewriter="true"
             :placeholder-array="[
               '使用 CodeCraft 创建一个数据分析看板，用来分析......',
@@ -28,6 +29,11 @@
             @submit="handleSubmit"
             :show-preset-prompts="true"
             :preset-prompts="prompts"
+            :dropdown-options="codeGenType"
+            :show-dropdown-tool="true"
+            :dropdown-value="codeGenTypeValue"
+            :dropdown-text="codeGenTypeValue"
+            @dropdown-change="handleDropdownChange"
           />
         </div>
       </div>
@@ -111,14 +117,27 @@ const isGenerating = ref(false)
 // 预设提示词
 const prompts = ref([
   {
-    key: '个人博客',
+    label: '个人博客',
     value: '帮我创建一个个人博客页面,需要保证用户信息面板处于右上角处',
   },
   {
-    key: '音乐播放器',
+    label: '音乐播放器',
     value: '创建一个音乐播放器页面,需要小巧,能够方便在其他页面引入',
   },
 ])
+
+const codeGenType = ref([
+  {
+    label: 'vue',
+    value: 'vue_project',
+  },
+  {
+    label: 'html',
+    value: 'multi_file',
+  },
+])
+
+const codeGenTypeValue = ref('vue_project')
 
 // 组件挂载时加载数据
 onMounted(() => {
@@ -189,6 +208,7 @@ const handleSubmit = async () => {
   try {
     const response = await doGenerate({
       initPrompt: userInput.value,
+      codeGenType: codeGenTypeValue.value,
     })
     if (response.data.data) {
       // 跳转对应的应用详情页
@@ -207,6 +227,15 @@ const handleSubmit = async () => {
   } finally {
     isGenerating.value = false
   }
+}
+
+/**
+ * 处理下拉选择变化事件
+ */
+const handleDropdownChange = (option: { label: string; value: string | number }) => {
+  codeGenTypeValue.value = option.value as string
+  console.log('下拉选择变化:', option)
+  console.log('gen', isGenerating.value)
 }
 
 /**
