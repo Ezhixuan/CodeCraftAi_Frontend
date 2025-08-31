@@ -30,9 +30,7 @@ declare namespace API {
   type AppGenerateReqVo = {
     /** 初始化提示 */
     initPrompt: string
-    /**
-     * 生成类型
-     */
+    /** 代码生成类型 */
     codeGenType: string
   }
 
@@ -109,6 +107,15 @@ declare namespace API {
     maxId?: string
   }
 
+  type AppStatusResVo = {
+    /** 预览状态 */
+    previewStatus?: 'LOADING' | 'LOADED' | 'ERROR'
+    /** 部署状态 */
+    deployStatus?: 'LOADING' | 'LOADED' | 'ERROR'
+    /** 原始目录状态 */
+    originalDirStatus?: 'LOADING' | 'LOADED' | 'ERROR'
+  }
+
   type AppUpdateAdminReqVo = {
     /** 应用ID */
     id: string
@@ -141,10 +148,10 @@ declare namespace API {
     data?: AppInfoCommonResVo
   }
 
-  type BaseResponseDeployStatusVo = {
+  type BaseResponseAppStatusResVo = {
     message?: string
     code?: number
-    data?: DeployStatusVo
+    data?: AppStatusResVo
   }
 
   type BaseResponseLong = {
@@ -217,29 +224,17 @@ declare namespace API {
     id: string
   }
 
-  type deployPreviewParams = {
+  type doDeployParams = {
     appId: string
   }
 
-  type DeployStatusVo = {
-    /** 应用ID */
-    appId?: string
-    /** 部署标识 */
-    preDeployKey?: string
-    /** 部署时间 */
-    deployTime?: string
-    /** 临时文件是否存在 */
-    tempFileExists?: boolean
-    /** 部署文件是否存在 */
-    deployFileExists?: boolean
+  type doPreviewParams = {
+    appId: string
+    reBuild: boolean
   }
 
   type generateCodeParams = {
     message: string
-    appId: string
-  }
-
-  type getDeployStatusParams = {
     appId: string
   }
 
@@ -249,6 +244,10 @@ declare namespace API {
 
   type getListParams = {
     queryReqVo: AppQueryReqVo
+  }
+
+  type getStatusParams = {
+    appId: string
   }
 
   type getUserInfoByIdParams = {
@@ -329,10 +328,6 @@ declare namespace API {
     totalRow?: string
     list?: UserInfoAdminResVo[]
     totalPage?: string
-  }
-
-  type redirectToStaticResourceParams = {
-    deployKey: string
   }
 
   type ServerSentEventString = true

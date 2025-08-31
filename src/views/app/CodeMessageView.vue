@@ -214,43 +214,81 @@
             <div class="preview-header">
               <h3>应用预览</h3>
               <div class="preview-actions">
-                <a-button v-if="preview.url" size="small" type="text" @click="openPreviewInNewTab">
-                  <template #icon><ExportOutlined /></template>
-                  新窗口打开
-                </a-button>
-                <a-button
-                  type="primary"
-                  :loading="preview.isLoading.value"
-                  :disabled="!preview.preview.value"
-                  @click="handlePreview"
-                  size="small"
-                >
-                  <template #icon><RocketOutlined /></template>
-                  {{ previewButtonText }}
-                </a-button>
+                <!-- 只有当originalDirStatus为LOADED时才显示按钮 -->
+                <template v-if="appStatus.originalDirStatus === 'LOADED'">
+                  <a-button v-if="preview.url" size="small" type="text" @click="openPreviewInNewTab">
+                    <template #icon><ExportOutlined /></template>
+                    新窗口打开
+                  </a-button>
+                  <!-- 预览按钮 -->
+                  <a-button
+                    type="primary"
+                    :loading="preview.isLoading.value || appStatus.previewStatus === 'LOADING'"
+                    @click="handlePreviewClick"
+                    :disabled="!isOwner"
+                    size="small"
+                  >
+                    <template #icon><RocketOutlined /></template>
+                    {{
+                      appStatus.previewStatus === 'LOADING' ? '预览中...' :
+                      preview.isLoading.value ? '预览中...' : '预览'
+                    }}
+                  </a-button>
+
+                  <!-- 部署按钮 -->
+                  <a-button
+                    type="default"
+                    :loading="appStatus.loading && appStatus.deployStatus === 'LOADING'"
+                    @click="handleDeployClick"
+                    :disabled="!isOwner || appStatus.previewStatus === 'LOADING'"
+                    size="small"
+                  >
+                    {{
+                      appStatus.deployStatus === 'LOADING' ? '部署中' :
+                      appStatus.deployStatus === 'LOADED' ? '重新部署' : '部署'
+                    }}
+                  </a-button>
+                </template>
               </div>
             </div>
             <div class="preview-content">
-              <div v-if="preview.isLoading.value" class="deploying-placeholder">
-                <a-spin size="large" />
-                <h4>正在部署应用...</h4>
-                <p>{{ deployProgress }}</p>
-                <a-progress :percent="preview.progressText.value" :show-info="false" />
+              <!-- 加载状态 -->
+              <div v-if="appStatus.previewStatus === 'LOADING' || preview.isLoading.value" class="loading-container">
+                <a-spin size="large">
+                  <template #indicator>
+                    <LoadingOutlined style="font-size: 24px" spin />
+                  </template>
+                </a-spin>
+                <p class="loading-text">{{ preview.progressText.value || '正在生成预览...' }}</p>
               </div>
-              <div v-else-if="preview.preview.value" class="preview-iframe-container">
-                <div v-if="preview.isLoading.value" class="iframe-loading">
-                  <a-spin size="large" tip="加载预览中..." />
-                </div>
+
+              <!-- 错误状态 -->
+              <div v-else-if="appStatus.previewStatus === 'ERROR'" class="error-container">
+                <ExclamationCircleOutlined class="error-icon" />
+                <p class="error-text">预览生成失败</p>
+                <a-button type="primary" @click="handlePreviewClick" :disabled="!isOwner">
+                  重新预览
+                </a-button>
+              </div>
+
+              <!-- 预览iframe -->
+              <div v-else-if="preview.url.value && preview.preview.value && appStatus.previewStatus === 'LOADED'" class="iframe-container">
                 <iframe
                   :src="preview.url.value"
-                  class="preview-iframe"
-                  @load="!preview.isLoading"
+                  frameborder="0"
+                  width="100%"
+                  height="100%"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
                 ></iframe>
               </div>
-              <div v-else class="preview-empty">
-                <div class="preview-icon">🚀</div>
-                <h4>等待预览</h4>
-                <p>代码生成完成后，点击预览按钮查看应用效果</p>
+
+              <!-- 默认占位符 -->
+              <div v-else class="deploy-placeholder">
+                <div class="placeholder-content">
+                  <RocketOutlined class="placeholder-icon" />
+                  <p v-if="appStatus.originalDirStatus !== 'LOADED'">请先生成代码后再进行预览</p>
+                  <p v-else>点击预览按钮生成应用预览</p>
+                </div>
               </div>
             </div>
           </div>
@@ -261,12 +299,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import {
   CopyOutlined,
+  ExclamationCircleOutlined,
   ExportOutlined,
+  LoadingOutlined,
   PlusOutlined,
   ReloadOutlined,
   RocketOutlined,
@@ -274,8 +314,7 @@ import {
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownRenderer from '@/components/MarkdownComponent.vue'
 import InputComponent from '@/components/InputComponent.vue'
-import { deployPreview, getDeployStatus } from '@/api/jingtaiziyuanbushukongzhiqi'
-import { getInfo, getList } from '@/api/yingyongkongzhiqi'
+import { getInfo, getList, doPreview, doDeploy, getStatus } from '@/api/yingyongkongzhiqi'
 import { list1 } from '@/api/duihualishi'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { BASE_URL } from '@/config/apiConfig'
@@ -326,14 +365,22 @@ const chat = {
 const preview = {
   url: ref(''),
   isLoading: ref(false),
-  deployStatus: ref<API.DeployStatusVo>(),
   preview: ref(false),
   progressText: ref(''),
 }
 
+// 应用状态管理
+const appStatus = reactive({
+  deployStatus: '' as 'LOADING' | 'LOADED' | 'ERROR' | '',
+  previewStatus: '' as 'LOADING' | 'LOADED' | 'ERROR' | '',
+  originalDirStatus: '' as 'LOADING' | 'LOADED' | 'ERROR' | '',
+  loading: false,
+  error: '',
+})
+
 const isVisibleOfDrawer = ref(false)
 const newMessage = ref('')
-const deployProgress = ref('准备部署环境...')
+
 const messageListRef = ref<HTMLElement | null>(null)
 const navKey = ref('0')
 const contentKey = ref(0)
@@ -370,10 +417,8 @@ const isOwner = computed(() => {
 const generatingText = computed(
   () => generatingTexts[generatingTextIndex.value % generatingTexts.length],
 )
-const previewButtonText = computed(() =>
-  preview.isLoading.value ? '部署中...' : preview.url.value ? '重新预览' : '立即预览',
-)
 const statusText = computed(() => {
+  console.log(preview)
   if (chat.isLoading.value) return '生成中'
   if (preview.preview.value) return '可预览'
   if (chat.messages.value.length === 0) return '等待输入'
@@ -455,7 +500,7 @@ const initByAppId = async (currentAppId: string) => {
   console.log(currentAppId)
   await getAppInfo(currentAppId)
   await loadChatHistory(false, currentAppId)
-  await getPreviewStatus(currentAppId)
+  await getAppStatus(currentAppId)
 }
 
 /**
@@ -485,26 +530,34 @@ const getAppInfo = async (currentAppId: string) => {
 }
 
 /**
- * 获取应用部署状态
+ * 获取应用状态
  * @param currentAppId 应用id
  */
-const getPreviewStatus = async (currentAppId: string) => {
-  if (!currentAppId) return
-  try {
-    const response = await getDeployStatus({ appId: currentAppId })
+const getAppStatus = async (currentAppId?: string) => {
+   const targetAppId = currentAppId || appId.value
+   if (!targetAppId) return
+   try {
+     appStatus.loading = true
+     appStatus.error = ''
+     const response = await getStatus({ appId: targetAppId })
     if (response.data.data) {
-      const previewStatus = response.data.data
-      console.log('previewStatus', previewStatus)
-      preview.preview.value =
-        (previewStatus.deployFileExists || false) && previewStatus.deployTime !== null
-      preview.deployStatus.value = previewStatus
-      if (preview.preview.value && previewStatus.preDeployKey) {
-        preview.url.value = getPreviewUrl(previewStatus.preDeployKey)
-      }
+      const statusData = response.data.data
+      appStatus.deployStatus = statusData.deployStatus || ''
+       appStatus.previewStatus = statusData.previewStatus || ''
+       appStatus.originalDirStatus = statusData.originalDirStatus || ''
+
+       // 更新预览状态
+        preview.preview.value = statusData.previewStatus === 'LOADED'
+        if (preview.preview.value) {
+          preview.url.value = getPreviewUrl()
+        }
     }
   } catch (error) {
-    console.error('获取应用部署状态失败:', error)
-    message.error('获取应用部署状态失败')
+    console.error('获取应用状态失败:', error)
+    appStatus.error = '获取状态失败'
+    message.error('获取应用状态失败')
+  } finally {
+    appStatus.loading = false
   }
 }
 
@@ -701,8 +754,14 @@ const startCodeGeneration = async (messageContent: string) => {
     }
 
     // 处理 done 事件
-    eventSource.addEventListener('done', function () {
+    eventSource.addEventListener('done', async function () {
       console.log('收到 done 事件，代码生成完成')
+
+      // 获取最新状态
+      if (appId.value) {
+        await getAppStatus(appId.value)
+      }
+
       handleSuccess()
     })
 
@@ -785,17 +844,86 @@ const handlePreview = async () => {
   updateProgress()
 
   try {
-    const response = await deployPreview({ appId: appId.value })
-    const deployKey = response.data.data
-    if (deployKey) {
-      preview.url.value = getPreviewUrl(deployKey)
-      preview.progressText.value = '部署完成！'
-      preview.preview.value = true
-      message.success('应用部署成功！')
-    }
+    // 调用新的预览接口
+    await doPreview({ appId: appId.value, reBuild: false })
+
+    // 预览成功后更新iframe URL
+     preview.url.value = getPreviewUrl()
+    preview.progressText.value = '部署完成！'
+    preview.preview.value = true
+    message.success('应用部署成功！')
+
+    // 获取最新状态
+     await getAppStatus()
   } catch (error) {
     console.error('部署预览出错:', error)
     message.error('部署失败，请重试')
+  } finally {
+    preview.isLoading.value = false
+  }
+}
+
+/**
+ * 处理部署按钮点击
+ */
+const handleDeployClick = async () => {
+  if (!appId.value) return
+
+  // 如果已经部署，询问是否重新部署
+  if (appStatus.deployStatus === 'LOADED') {
+    Modal.confirm({
+      title: '确认重新部署',
+      content: '应用已部署，是否重新部署？',
+      okText: '确认',
+      cancelText: '取消',
+      onOk: () => handleDeploy(true)
+    })
+  } else {
+    await handleDeploy(false)
+  }
+}
+
+/**
+ * 处理部署
+ */
+const handleDeploy = async (reDeploy: boolean = false) => {
+  if (!appId.value) return
+
+  try {
+    appStatus.loading = true
+    await doDeploy({ appId: appId.value })
+    message.success(reDeploy ? '重新部署成功！' : '部署成功！')
+
+    // 获取最新状态
+    await getAppStatus()
+  } catch (error) {
+    console.error('部署失败:', error)
+    message.error('部署失败，请重试')
+  } finally {
+    appStatus.loading = false
+  }
+}
+
+/**
+ * 处理预览按钮点击
+ */
+const handlePreviewClick = async () => {
+  if (!appId.value) return
+
+  try {
+    preview.isLoading.value = true
+    await doPreview({ appId: appId.value, reBuild: false })
+
+    // 预览成功后更新iframe URL
+    preview.url.value = getPreviewUrl()
+    preview.preview.value = true
+    message.success('预览生成成功！')
+
+    // 获取最新状态
+    await getAppStatus()
+  } catch (error) {
+    console.error('预览失败:', error)
+    message.error('预览生成失败')
   } finally {
     preview.isLoading.value = false
   }
@@ -1192,11 +1320,11 @@ const openPreviewInNewTab = () => {
 
 /**
  * 获取预览URL
- * @param deployKey 部署密钥
+ * @param currentAppId 应用ID
  */
-const getPreviewUrl = (deployKey: string) => {
-  return `${BASE_URL}/deploy/redirect/${deployKey}`
-}
+const getPreviewUrl = () => {
+   return `${BASE_URL}/app/preview/${appId.value}`
+ }
 
 // 组件卸载时清理防抖定时器
 onUnmounted(() => {
@@ -1487,6 +1615,70 @@ onUnmounted(() => {
   font-size: 48px;
   margin-bottom: 16px;
   opacity: 0.6;
+}
+
+.deploy-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  text-align: center;
+}
+
+.placeholder-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  color: #d9d9d9;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+}
+
+.loading-text {
+  color: #666;
+  margin: 0;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+}
+
+.error-icon {
+  font-size: 48px;
+  color: #ff4d4f;
+}
+
+.error-text {
+  color: #ff4d4f;
+  margin: 0;
+  font-size: 16px;
+}
+
+.iframe-container {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 /* Drawer Styles */

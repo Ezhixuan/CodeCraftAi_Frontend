@@ -30,6 +30,20 @@ export async function deleteUsingDelete(
   })
 }
 
+/** 应用部署 PUT /app/deploy/${param0} */
+export async function doDeploy(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.doDeployParams,
+  options?: { [key: string]: any }
+) {
+  const { appId: param0, ...queryParams } = params
+  return request<API.BaseResponseString>(`/app/deploy/${param0}`, {
+    method: 'PUT',
+    params: { ...queryParams },
+    ...(options || {}),
+  })
+}
+
 /** 通过用户输入生成应用记录 POST /app/generate */
 export async function doGenerate(body: API.AppGenerateReqVo, options?: { [key: string]: any }) {
   return request<API.BaseResponseLong>('/app/generate', {
@@ -78,6 +92,36 @@ export async function getList(
 export async function getFeaturedList(options?: { [key: string]: any }) {
   return request<API.PageResponseAppInfoCommonResVo>('/app/list/featured', {
     method: 'GET',
+    ...(options || {}),
+  })
+}
+
+/** 应用预览 GET /app/preview/${param0} */
+export async function doPreview(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.doPreviewParams,
+  options?: { [key: string]: any }
+) {
+  const { appId: param0, ...queryParams } = params
+  return request<any>(`/app/preview/${param0}`, {
+    method: 'GET',
+    params: {
+      ...queryParams,
+    },
+    ...(options || {}),
+  })
+}
+
+/** 获取应用状态 GET /app/status/${param0} */
+export async function getStatus(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getStatusParams,
+  options?: { [key: string]: any }
+) {
+  const { appId: param0, ...queryParams } = params
+  return request<API.BaseResponseAppStatusResVo>(`/app/status/${param0}`, {
+    method: 'GET',
+    params: { ...queryParams },
     ...(options || {}),
   })
 }
