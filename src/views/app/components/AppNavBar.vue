@@ -32,6 +32,17 @@
               <span v-else class="app-name" :class="{ editable: isOwnerCurr }" @click="startEdit">
                 {{ appInfo.name }}
               </span>
+              <!-- 代码生成类型彩色标签 -->
+              <a-tag
+                v-if="appInfo.codeGenType"
+                :color="getCodeGenTypeConfig(appInfo.codeGenType).color"
+                class="code-gen-type-tag"
+              >
+                <template #icon>
+                  <component :is="getCodeGenTypeConfig(appInfo.codeGenType).icon" />
+                </template>
+                {{ getCodeGenTypeConfig(appInfo.codeGenType).label }}
+              </a-tag>
               <span v-if="isOwnerCurr" class="owner-tag">我的应用</span>
             </div>
 
@@ -99,7 +110,16 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { getInfo, update } from '@/api/yingyongkongzhiqi'
 import { message } from 'ant-design-vue'
-import { EditOutlined, EyeOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
+import {
+  EditOutlined,
+  EyeOutlined,
+  InfoCircleOutlined,
+  CodeOutlined,
+  Html5Outlined,
+  NodeIndexOutlined,
+  FileOutlined,
+  BugOutlined
+} from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
 import { useLoginUserStore } from '@/stores/loginUser'
 
@@ -213,6 +233,75 @@ const formatCodeGenType = (codeGenType?: string) => {
   return typeMap[codeGenType] || codeGenType
 }
 
+/**
+ * 获取代码生成类型的配置信息（颜色、图标、标签文本）
+ * @param codeGenType 代码生成类型
+ * @returns 包含颜色、图标和标签的配置对象
+ */
+const getCodeGenTypeConfig = (codeGenType?: string) => {
+  if (!codeGenType) {
+    return {
+      color: 'default',
+      icon: CodeOutlined,
+      label: '未知类型'
+    }
+  }
+
+  const configMap: Record<string, { color: string; icon: typeof CodeOutlined; label: string }> = {
+    'vue_project': {
+      color: 'green',
+      icon: CodeOutlined,
+      label: 'Vue'
+    },
+    'react_project': {
+      color: 'blue',
+      icon: CodeOutlined,
+      label: 'React'
+    },
+    'angular_project': {
+      color: 'red',
+      icon: CodeOutlined,
+      label: 'Angular'
+    },
+    'html': {
+      color: 'orange',
+      icon: Html5Outlined,
+      label: 'HTML'
+    },
+    'node_project': {
+      color: 'lime',
+      icon: NodeIndexOutlined,
+      label: 'Node.js'
+    },
+    'python_project': {
+      color: 'purple',
+      icon: FileOutlined,
+      label: 'Python'
+    },
+    'java_project': {
+      color: 'volcano',
+      icon: BugOutlined,
+      label: 'Java'
+    },
+    'multi_file': {
+      color: 'cyan',
+      icon: CodeOutlined,
+      label: '多文件'
+    },
+    'single_file': {
+      color: 'geekblue',
+      icon: CodeOutlined,
+      label: '单文件'
+    }
+  }
+
+  return configMap[codeGenType] || {
+    color: 'default',
+    icon: CodeOutlined,
+    label: codeGenType
+  }
+}
+
 const editApp = () => {
   router.push(`/app/edit/${props.appId}`)
 }
@@ -319,6 +408,25 @@ const handleLogoMouseOver = () => {
   border-radius: 4px;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.code-gen-type-tag {
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.code-gen-type-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 .info-button {
   color: #666;
