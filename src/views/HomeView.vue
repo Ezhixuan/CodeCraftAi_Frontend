@@ -29,11 +29,7 @@
             @submit="handleSubmit"
             :show-preset-prompts="true"
             :preset-prompts="prompts"
-            :dropdown-options="codeGenType"
-            :show-dropdown-tool="true"
-            :dropdown-value="codeGenTypeValue"
-            :dropdown-text="codeGenTypeValue"
-            @dropdown-change="handleDropdownChange"
+
           />
         </div>
       </div>
@@ -126,18 +122,7 @@ const prompts = ref([
   },
 ])
 
-const codeGenType = ref([
-  {
-    label: 'vue',
-    value: 'vue_project',
-  },
-  {
-    label: 'html',
-    value: 'multi_file',
-  },
-])
 
-const codeGenTypeValue = ref('vue_project')
 
 // 组件挂载时加载数据
 onMounted(() => {
@@ -208,7 +193,6 @@ const handleSubmit = async () => {
   try {
     const response = await doGenerate({
       initPrompt: userInput.value,
-      codeGenType: codeGenTypeValue.value,
     })
     if (response.data.data) {
       // 跳转对应的应用详情页
@@ -229,14 +213,7 @@ const handleSubmit = async () => {
   }
 }
 
-/**
- * 处理下拉选择变化事件
- */
-const handleDropdownChange = (option: { label: string; value: string | number }) => {
-  codeGenTypeValue.value = option.value as string
-  console.log('下拉选择变化:', option)
-  console.log('gen', isGenerating.value)
-}
+
 
 /**
  * 处理应用卡片点击事件

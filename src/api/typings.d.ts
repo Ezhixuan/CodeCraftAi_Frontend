@@ -30,8 +30,6 @@ declare namespace API {
   type AppGenerateReqVo = {
     /** 初始化提示 */
     initPrompt: string
-    /** 代码生成类型 */
-    codeGenType: string
   }
 
   type AppInfoAdminResVo = {
@@ -69,6 +67,8 @@ declare namespace API {
     cover?: string
     /** 部署时间 */
     deployTime?: string
+    /** 代码生成类型 */
+    codeGenType?: string
     /** 用户 id */
     userId?: string
     /**  创建时间 */
@@ -225,6 +225,10 @@ declare namespace API {
   }
 
   type doDeployParams = {
+    appId: string
+  }
+
+  type doDownloadParams = {
     appId: string
   }
 

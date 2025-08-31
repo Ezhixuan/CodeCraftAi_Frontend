@@ -56,9 +56,11 @@
                   </div>
                   <div v-if="appInfo.userInfo" class="info-item">
                     <span class="label">创建者：</span>
-                    <span class="value">{{
-                      appInfo.userInfo.name || appInfo.userInfo.account
-                    }}</span>
+                    <span class="value">{{ appInfo.userInfo.name || appInfo.userInfo.account }}</span>
+                  </div>
+                  <div v-if="appInfo.codeGenType" class="info-item">
+                    <span class="label">代码类型：</span>
+                    <span class="value">{{ formatCodeGenType(appInfo.codeGenType) }}</span>
                   </div>
                 </div>
               </template>
@@ -192,6 +194,23 @@ const cancelEdit = () => {
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString('zh-CN')
+}
+
+/**
+ * 格式化代码生成类型为用户友好的显示文本
+ * @param codeGenType 代码生成类型
+ * @returns 格式化后的显示文本
+ */
+const formatCodeGenType = (codeGenType?: string) => {
+  if (!codeGenType) return '-'
+  const typeMap: Record<string, string> = {
+    'vue_project': 'Vue项目',
+    'multi_file': '多文件项目',
+    'single_file': '单文件项目',
+    'react_project': 'React项目',
+    'html_project': 'HTML项目'
+  }
+  return typeMap[codeGenType] || codeGenType
 }
 
 const editApp = () => {

@@ -248,6 +248,18 @@
                       appStatus.deployStatus === 'LOADED' ? '重新部署' : '部署'
                     }}
                   </a-button>
+
+                  <!-- 下载按钮 -->
+                  <a-button
+                    type="default"
+                    :loading="downloadLoading"
+                    @click="handleDownloadClick"
+                    :disabled="!isOwner"
+                    size="small"
+                  >
+                    <template #icon><DownloadOutlined /></template>
+                    {{ downloadLoading ? '下载中...' : '下载代码' }}
+                  </a-button>
                 </template>
               </div>
             </div>
@@ -304,6 +316,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
   CopyOutlined,
+  DownloadOutlined,
   ExclamationCircleOutlined,
   ExportOutlined,
   LoadingOutlined,
@@ -314,7 +327,7 @@ import {
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownRenderer from '@/components/MarkdownComponent.vue'
 import InputComponent from '@/components/InputComponent.vue'
-import { getInfo, getList, doPreview, doDeploy, getStatus } from '@/api/yingyongkongzhiqi'
+import { getInfo, getList, doPreview, doDeploy, getStatus, doDownload } from '@/api/yingyongkongzhiqi'
 import { list1 } from '@/api/duihualishi'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { BASE_URL } from '@/config/apiConfig'
@@ -368,6 +381,9 @@ const preview = {
   preview: ref(false),
   progressText: ref(''),
 }
+
+// 下载状态
+const downloadLoading = ref(false)
 
 // 应用状态管理
 const appStatus = reactive({
@@ -1310,11 +1326,44 @@ const regenerateResponse = async (messageIndex: number) => {
 }
 
 /**
- * 在新标签页中打开预览
+ * 打开新窗口预览
  */
 const openPreviewInNewTab = () => {
   if (preview.url.value) {
     window.open(preview.url.value, '_blank')
+  }
+}
+
+/**
+ * 处理下载按钮点击事件
+ */
+const handleDownloadClick = async () => {
+  if (!appId.value) {
+    message.error('应用ID不存在')
+    return
+  }
+
+  try {
+     downloadLoading.value = true
+     const response = await doDownload({ appId: appId.value })
+     
+     // 创建下载链接
+     const blob = new Blob([response.data], { type: 'application/zip' })
+     const url = window.URL.createObjectURL(blob)
+     const link = document.createElement('a')
+     link.href = url
+     link.download = `${appInfo.value?.name || 'app'}_code.zip`
+     document.body.appendChild(link)
+     link.click()
+     document.body.removeChild(link)
+     window.URL.revokeObjectURL(url)
+     
+     message.success('代码下载成功')
+  } catch (error) {
+    console.error('下载失败:', error)
+    message.error('下载失败，请稍后重试')
+  } finally {
+    downloadLoading.value = false
   }
 }
 
