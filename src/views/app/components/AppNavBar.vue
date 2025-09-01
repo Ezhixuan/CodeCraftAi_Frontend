@@ -87,21 +87,6 @@
           </div>
         </div>
       </div>
-
-      <div class="actions-section">
-        <a-button v-if="isOwnerCurr" type="primary" @click="editApp">
-          <template #icon>
-            <EditOutlined />
-          </template>
-          编辑应用
-        </a-button>
-        <a-button v-else-if="appInfo" type="default" @click="viewApp">
-          <template #icon>
-            <EyeOutlined />
-          </template>
-          查看应用
-        </a-button>
-      </div>
     </div>
   </div>
 </template>
@@ -111,8 +96,6 @@ import { ref, onMounted, nextTick } from 'vue'
 import { getInfo, update } from '@/api/yingyongkongzhiqi'
 import { message } from 'ant-design-vue'
 import {
-  EditOutlined,
-  EyeOutlined,
   InfoCircleOutlined,
   CodeOutlined,
   Html5Outlined,
@@ -440,10 +423,7 @@ const handleLogoMouseOver = () => {
 .info-placeholder {
   color: #999;
 }
-.actions-section {
-  display: flex;
-  align-items: center;
-}
+
 .app-info-popover {
   min-width: 250px;
 }

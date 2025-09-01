@@ -345,7 +345,7 @@ import {
 } from '@ant-design/icons-vue'
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownRenderer from '@/components/MarkdownComponent.vue'
-import InputComponent from '@/components/InputComponent.vue'
+import InputComponent from '@/components/Input/InputComponent.vue'
 import {
   getInfo,
   getList,
@@ -356,8 +356,8 @@ import {
 } from '@/api/yingyongkongzhiqi'
 import { list1 } from '@/api/duihualishi'
 import { useLoginUserStore } from '@/stores/loginUser'
-import { BASE_URL } from '@/config/apiConfig'
-import DateUtil from '@/components/DateUtil'
+import { getBaseUrl } from '@/config/env.ts'
+import DateUtil from '@/utils/DateUtil.ts'
 
 interface ChatMessage {
   id: string
@@ -764,7 +764,7 @@ const startCodeGeneration = async (messageContent: string) => {
   scrollToBottom()
 
   try {
-    const url = `${BASE_URL}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
+    const url = `${getBaseUrl}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
     eventSource = new EventSource(url, { withCredentials: true })
     console.log('EventSource 已创建', eventSource)
 
@@ -1284,7 +1284,7 @@ const handleAppClick = async (app: API.AppInfoCommonResVo) => {
   try {
     isVisibleOfDrawer.value = false
 
-    await router.push('/app/code-message?appId=' + app.id)
+    await router.push('/App/code-message?appId=' + app.id)
     await initByAppId(app.id)
     navKey.value += 1
     contentKey.value += 1
@@ -1298,7 +1298,7 @@ const handleAppClick = async (app: API.AppInfoCommonResVo) => {
  * 处理登录点击事件
  */
 const handleLogin = () => {
-  router.push('/auth/login?redirect=/app/code-message?appId=' + appId.value)
+  router.push('/auth/login?redirect=/App/code-message?appId=' + appId.value)
   isVisibleOfDrawer.value = false
 }
 
@@ -1371,7 +1371,7 @@ const handleDownloadClick = async () => {
 
   try {
     downloadLoading.value = true
-    const url = `${BASE_URL}/app/download/${appId.value}`
+    const url = `${getBaseUrl}/app/download/${appId.value}`
     const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
@@ -1428,7 +1428,7 @@ const handleDownloadClick = async () => {
  * @param currentAppId 应用ID
  */
 const getPreviewUrl = () => {
-  return `${BASE_URL}/app/preview/${appId.value}`
+  return `${getBaseUrl}/app/preview/${appId.value}`
 }
 
 // 组件卸载时清理防抖定时器

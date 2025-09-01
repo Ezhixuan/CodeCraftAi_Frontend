@@ -2,7 +2,7 @@
 /* eslint-disable */
 import request from '@/request'
 
-/** 获取应用详情 GET /app/${param0} */
+/** 获取应用详情 GET /App/${param0} */
 export async function getInfo(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getInfoParams,
@@ -16,7 +16,7 @@ export async function getInfo(
   })
 }
 
-/** 删除应用 DELETE /app/${param0} */
+/** 删除应用 DELETE /App/${param0} */
 export async function deleteUsingDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.deleteUsingDELETEParams,
@@ -30,7 +30,7 @@ export async function deleteUsingDelete(
   })
 }
 
-/** 应用部署 PUT /app/deploy/${param0} */
+/** 应用部署 PUT /App/deploy/${param0} */
 export async function doDeploy(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.doDeployParams,
@@ -44,7 +44,7 @@ export async function doDeploy(
   })
 }
 
-/** 应用下载 GET /app/download/${param0} */
+/** 应用下载 GET /App/download/${param0} */
 export async function doDownload(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.doDownloadParams,
@@ -58,7 +58,7 @@ export async function doDownload(
   })
 }
 
-/** 通过用户输入生成应用记录 POST /app/generate */
+/** 通过用户输入生成应用记录 POST /App/generate */
 export async function doGenerate(body: API.AppGenerateReqVo, options?: { [key: string]: any }) {
   return request<API.BaseResponseLong>('/app/generate', {
     method: 'POST',
@@ -70,7 +70,7 @@ export async function doGenerate(body: API.AppGenerateReqVo, options?: { [key: s
   })
 }
 
-/** 代码生成 GET /app/generate/code */
+/** 代码生成 GET /App/generate/code */
 export async function generateCode(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.generateCodeParams,
@@ -85,7 +85,7 @@ export async function generateCode(
   })
 }
 
-/** 获取用户应用列表 GET /app/list */
+/** 获取用户应用列表 GET /App/list */
 export async function getList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getListParams,
@@ -102,7 +102,7 @@ export async function getList(
   })
 }
 
-/** 获取精选应用列表 GET /app/list/featured */
+/** 获取精选应用列表 GET /App/list/featured */
 export async function getFeaturedList(options?: { [key: string]: any }) {
   return request<API.PageResponseAppInfoCommonResVo>('/app/list/featured', {
     method: 'GET',
@@ -110,7 +110,7 @@ export async function getFeaturedList(options?: { [key: string]: any }) {
   })
 }
 
-/** 应用预览 GET /app/preview/${param0} */
+/** 应用预览 GET /App/preview/${param0} */
 export async function doPreview(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.doPreviewParams,
@@ -126,7 +126,7 @@ export async function doPreview(
   })
 }
 
-/** 获取应用状态 GET /app/status/${param0} */
+/** 获取应用状态 GET /App/status/${param0} */
 export async function getStatus(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getStatusParams,
@@ -140,7 +140,7 @@ export async function getStatus(
   })
 }
 
-/** 更新应用信息 POST /app/update */
+/** 更新应用信息 POST /App/update */
 export async function update(body: API.AppUpdateCommonReqVo, options?: { [key: string]: any }) {
   return request<API.BaseResponseVoid>('/app/update', {
     method: 'POST',

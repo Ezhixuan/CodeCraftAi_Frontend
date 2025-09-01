@@ -1,7 +1,7 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
@@ -10,7 +10,7 @@ const router = createRouter({
     },
     // 代码生成和预览页面
     {
-      path: '/app/code-message',
+      path: '/App/code-message',
       name: 'CodeMessage',
       component: () => import('@/views/app/CodeMessageView.vue'),
       meta: {
@@ -57,7 +57,7 @@ const router = createRouter({
         requiresAdmin: true,
       },
     },
-    // 管理员聊天记录管理页面
+    // 管理员对话历史管理页面
     {
       path: '/admin/chat-history',
       name: 'admin-chat-history',
@@ -66,12 +66,6 @@ const router = createRouter({
         requiresAuth: true,
         requiresAdmin: true,
       },
-    },
-    // 按钮样式测试页面
-    {
-      path: '/test/button-styles',
-      name: 'button-style-test',
-      component: () => import('@/views/ButtonStyleTest.vue'),
     },
   ],
 })

@@ -1,4 +1,4 @@
-import type { MenuPermissionChecker } from '../config/menu'
+import type { MenuPermissionChecker } from '../config/menu.ts'
 
 export const checkMenuPermission: MenuPermissionChecker = (menuItem, userRole) => {
   if (!menuItem.roles) {

@@ -48,7 +48,7 @@
         <div class="empty-text">您还没有创建任何应用</div>
       </div>
       <div v-else class="apps-grid">
-        <AppCardComponent
+        <AppCard
           v-for="app in userApps"
           :key="app.id"
           :app-info="app"
@@ -72,7 +72,7 @@
         <div class="empty-text">暂无精选应用</div>
       </div>
       <div v-else class="apps-grid">
-        <AppCardComponent
+        <AppCard
           v-for="app in featuredApps"
           :key="app.id"
           :app-info="app"
@@ -90,8 +90,8 @@ import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { doGenerate, getFeaturedList, getList } from '@/api/yingyongkongzhiqi'
 import { useLoginUserStore } from '@/stores/loginUser'
-import InputComponent from '@/components/InputComponent.vue'
-import AppCardComponent from '@/components/AppCardComponent.vue'
+import InputComponent from '@/components/Input/InputComponent.vue'
+import AppCard from '@/components/App/Card/index.vue'
 import CommonBackground from '@/components/CommonBackgroundComponent.vue'
 import router from '@/router'
 
@@ -197,7 +197,7 @@ const handleSubmit = async () => {
     if (response.data.data) {
       // 跳转对应的应用详情页
       await router.push({
-        path: '/app/code-message',
+        path: '/App/code-message',
         query: {
           appId: response.data.data,
           userMessage: userInputMessage,
@@ -221,7 +221,7 @@ const handleSubmit = async () => {
 const handleAppCardClick = (app: API.AppInfoCommonResVo) => {
   try {
     router.push({
-      path: '/app/code-message',
+      path: '/App/code-message',
       query: {
         appId: app.id,
         userId: loginUserStore.loginUser.id,

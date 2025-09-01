@@ -169,7 +169,7 @@ import { message, Modal } from 'ant-design-vue'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import type { Dayjs } from 'dayjs'
 import { adminList } from '@/api/duihualishi'
-import DateUtil from '@/components/DateUtil'
+import DateUtil from '@/utils/DateUtil.ts'
 
 // 搜索表单
 const searchForm = reactive<{

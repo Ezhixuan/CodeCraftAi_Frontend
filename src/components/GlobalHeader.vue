@@ -54,7 +54,7 @@ import { useRouter } from 'vue-router'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { doLogout } from '@/api/yonghukongzhiqi'
 import type { MenuItem, UserRole } from '../config/menu'
-import { checkMenuPermission } from './AuthUtil'
+import { checkMenuPermission } from '../utils/AuthUtil.ts'
 import { doJump, getMenuConfig } from '@/config/menuConfig'
 
 const router = useRouter()
