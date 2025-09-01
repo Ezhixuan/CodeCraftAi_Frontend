@@ -150,7 +150,9 @@ const loadUserInfo = async () => {
     isLoading.value = true
     try {
       const response = await getUserInfoById({ id: props.userId })
-      currentUserInfo.value = response as API.UserInfoCommonResVo
+      if (response.data.data) {
+        currentUserInfo.value = response.data.data
+      }
     } catch (error) {
       console.error('获取用户信息失败', error)
       currentUserInfo.value = null

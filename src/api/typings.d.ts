@@ -260,9 +260,9 @@ declare namespace API {
 
   type KeyValueResVo = {
     /** 枚举 key */
-    key?: Record<string, any>
+    key?: string
     /** 枚举 value */
-    value?: Record<string, any>
+    value?: string
   }
 
   type list1Params = {

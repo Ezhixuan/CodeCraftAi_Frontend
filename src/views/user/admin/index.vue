@@ -26,8 +26,9 @@
             style="width: 120px"
             allow-clear
           >
-            <a-select-option :value="1">正常</a-select-option>
-            <a-select-option :value="0">禁用</a-select-option>
+            <a-select-option v-for="status in userStatusList" :key="status.key" :value="status.key">
+              {{ status.value }}
+            </a-select-option>
           </a-select>
         </a-form-item>
 
@@ -38,8 +39,9 @@
             style="width: 150px"
             allow-clear
           >
-            <a-select-option value="USER">普通用户</a-select-option>
-            <a-select-option value="ADMIN">管理员</a-select-option>
+            <a-select-option v-for="role in userRoleList" :key="role.key" :value="role.key">
+              {{ role.value }}
+            </a-select-option>
           </a-select>
         </a-form-item>
 
@@ -81,14 +83,14 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'green' : 'red'">
-              {{ record.status === 1 ? '正常' : '禁用' }}
+            <a-tag :color="getStatusColor(record.status)">
+              {{ getStatusText(record.status) }}
             </a-tag>
           </template>
 
           <template v-if="column.key === 'role'">
-            <a-tag :color="record.role === 'ADMIN' ? 'blue' : 'default'">
-              {{ record.role === 'ADMIN' ? '管理员' : '普通用户' }}
+            <a-tag :color="getRoleColor(record.role)">
+              {{ getRoleText(record.role) }}
             </a-tag>
           </template>
 
@@ -179,13 +181,13 @@
               currentUser.email || '未设置'
             }}</a-descriptions-item>
             <a-descriptions-item label="状态">
-              <a-tag :color="currentUser.status === 1 ? 'green' : 'red'">
-                {{ currentUser.status === 1 ? '正常' : '禁用' }}
+              <a-tag :color="getStatusColor(currentUser.status)">
+                {{ getStatusText(currentUser.status) }}
               </a-tag>
             </a-descriptions-item>
             <a-descriptions-item label="角色">
-              <a-tag :color="currentUser.role === 'ADMIN' ? 'blue' : 'default'">
-                {{ currentUser.role === 'ADMIN' ? '管理员' : '普通用户' }}
+              <a-tag :color="getRoleColor(currentUser.role)">
+                {{ getRoleText(currentUser.role) }}
               </a-tag>
             </a-descriptions-item>
             <a-descriptions-item label="创建时间" :span="2">
@@ -199,7 +201,12 @@
       </a-modal>
 
       <!-- 创建用户结果展示模态框 -->
-      <a-modal v-model:open="showCreatedUsersModal" title="用户创建成功" width="800px" :footer="null">
+      <a-modal
+        v-model:open="showCreatedUsersModal"
+        title="用户创建成功"
+        width="800px"
+        :footer="null"
+      >
         <div class="created-users-result">
           <a-alert
             message="用户创建成功"
@@ -263,6 +270,7 @@ import {
 } from '@/api/userController.ts'
 import UserAvatar from '@/components/User/Avatar/index.vue'
 import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
+import { useEnumStore } from '@/stores/enum.ts'
 
 // 搜索表单
 const searchForm = reactive<API.UserQueryReqVo>({
@@ -448,7 +456,7 @@ const handleAddByAccount = async () => {
       message.success(`成功创建 ${response.data.data.totalPage} 个用户`)
       addByAccountVisible.value = false
       showCreatedUsersModal.value = true // 显示创建结果
-      getUserList() // 刷新列表
+      await getUserList() // 刷新列表
     }
   } catch (error) {
     console.error('批量创建用户失败:', error)
@@ -476,7 +484,7 @@ const handleAddBySize = async () => {
       message.success(`成功创建 ${response.data.data.list.length} 个用户`)
       addBySizeVisible.value = false
       showCreatedUsersModal.value = true // 显示创建结果
-      getUserList() // 刷新列表
+      await getUserList() // 刷新列表
     }
   } catch (error) {
     console.error('批量创建用户失败:', error)
@@ -500,7 +508,7 @@ const disableUser = (user: API.UserInfoAdminResVo) => {
       try {
         await adminDisable({ disableId: user.id! })
         message.success('用户禁用成功')
-        getUserList() // 刷新列表
+        await getUserList() // 刷新列表
       } catch (error) {
         console.error('禁用用户失败:', error)
       }
@@ -560,9 +568,47 @@ const createdUsersColumns = [
   },
 ]
 
+// 获取枚举store实例
+const enumStore = useEnumStore()
+
+// 获取用户角色和状态列表
+const userRoleList = computed(() => enumStore.userRoleList)
+const userStatusList = computed(() => enumStore.userStatusList)
+
+// 加载枚举列表
+const loadEnums = async () => {
+  await Promise.all([enumStore.loadUserRoleList(), enumStore.loadUserStatusList()])
+}
+
+// 获取状态文本
+const getStatusText = (status: number | undefined) => {
+  if (status === undefined) return ''
+  const statusItem = userStatusList.value.find((item) => Number(item.key) === status)
+  return statusItem ? statusItem.value : status === 1 ? '正常' : '禁用'
+}
+
+// 获取状态颜色
+const getStatusColor = (status: number | undefined) => {
+  if (status === undefined) return 'default'
+  return status === 1 ? 'green' : 'red'
+}
+
+// 获取角色文本
+const getRoleText = (role: string | undefined) => {
+  if (!role) return ''
+  const roleItem = userRoleList.value.find((item) => item.key === role)
+  return roleItem ? roleItem.value : role === 'ADMIN' ? '管理员' : '普通用户'
+}
+
+// 获取角色颜色
+const getRoleColor = (role: string | undefined) => {
+  if (!role) return 'default'
+  return role === 'ADMIN' ? 'blue' : 'default'
+}
+
 // 页面初始化
 onMounted(() => {
-  getUserList()
+  Promise.all([getUserList(), loadEnums()])
 })
 </script>
 
