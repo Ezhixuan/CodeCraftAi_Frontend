@@ -12,7 +12,7 @@ const router = createRouter({
     {
       path: '/App/code-message',
       name: 'CodeMessage',
-      component: () => import('@/views/app/CodeMessageView.vue'),
+      component: () => import('@/views/app/index.vue'),
       meta: {
         hideLayout: true,
         keepAlive: false,
@@ -21,18 +21,18 @@ const router = createRouter({
     {
       path: '/auth/login',
       name: 'auth-login',
-      component: () => import('@/views/user/auth/UserAuthView.vue'),
+      component: () => import('@/views/user/auth/index.vue'),
     },
     {
       path: '/auth/register',
       name: 'auth-register',
-      component: () => import('@/views/user/auth/UserAuthView.vue'),
+      component: () => import('@/views/user/auth/index.vue'),
     },
     // 用户个人信息页面
     {
       path: '/user/profile',
       name: 'user-profile',
-      component: () => import('@/views/user/UserProfileView.vue'),
+      component: () => import('@/views/user/index.vue'),
       meta: {
         requiresAuth: true,
       },
@@ -41,7 +41,7 @@ const router = createRouter({
     {
       path: '/admin/users',
       name: 'admin-users',
-      component: () => import('@/views/user/admin/UserManagerView.vue'),
+      component: () => import('@/views/user/admin/index.vue'),
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
@@ -51,7 +51,7 @@ const router = createRouter({
     {
       path: '/admin/apps',
       name: 'admin-apps',
-      component: () => import('@/views/app/admin/AppManagerView.vue'),
+      component: () => import('@/views/app/admin/info/index.vue'),
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
@@ -61,7 +61,7 @@ const router = createRouter({
     {
       path: '/admin/chat-history',
       name: 'admin-chat-history',
-      component: () => import('@/views/chat/admin/ChatHistoryManagerView.vue'),
+      component: () => import('@/views/app/admin/chat/index.vue'),
       meta: {
         requiresAuth: true,
         requiresAdmin: true,

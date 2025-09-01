@@ -9,7 +9,7 @@ import 'highlight.js/lib/common'
 import hljs from 'highlight.js'
 
 const props = defineProps<{
-  content: string
+  content: string | undefined
 }>()
 
 // 创建MarkdownIt实例并配置代码高亮功能

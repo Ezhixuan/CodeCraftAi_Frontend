@@ -1,12 +1,7 @@
 <template>
-  <div class="user-manager">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h2>用户管理</h2>
-    </div>
-
+  <AdminPageWrapper title="用户管理">
     <!-- 搜索表单 -->
-    <a-card class="search-card" title="搜索条件">
+    <template #searchForm>
       <a-form :model="searchForm" layout="inline" @finish="handleSearch" @reset="handleReset">
         <a-form-item label="用户ID" name="id">
           <a-input-number
@@ -57,10 +52,10 @@
           </a-space>
         </a-form-item>
       </a-form>
-    </a-card>
+    </template>
 
     <!-- 操作按钮 -->
-    <a-card class="action-card">
+    <template #actions>
       <a-space>
         <a-button type="primary" @click="showAddByAccountModal">
           <PlusOutlined /> 批量创建用户(按账号)
@@ -72,10 +67,10 @@
           <DownloadOutlined /> 导出创建的用户
         </a-button>
       </a-space>
-    </a-card>
+    </template>
 
     <!-- 用户列表 -->
-    <a-card class="table-card" title="用户列表">
+    <template #default>
       <a-table
         :columns="columns"
         :data-source="userList"
@@ -113,138 +108,141 @@
           </template>
         </template>
       </a-table>
-    </a-card>
+    </template>
 
-    <!-- 按账号批量创建用户模态框 -->
-    <a-modal
-      v-model:open="addByAccountVisible"
-      title="批量创建用户(按账号)"
-      width="600px"
-      @ok="handleAddByAccount"
-      :confirm-loading="addLoading"
-    >
-      <a-form :model="addByAccountForm" layout="vertical">
-        <a-form-item label="用户账号列表">
-          <a-textarea
-            v-model:value="addByAccountForm.accounts"
-            placeholder="请输入用户账号，每行一个账号"
-            :rows="6"
-          />
-          <div class="form-tip">每行输入一个账号，系统将自动生成密码</div>
-        </a-form-item>
-      </a-form>
-    </a-modal>
+    <!-- 模态框 -->
+    <template #modals>
+      <!-- 按账号批量创建用户模态框 -->
+      <a-modal
+        v-model:open="addByAccountVisible"
+        title="批量创建用户(按账号)"
+        width="600px"
+        @ok="handleAddByAccount"
+        :confirm-loading="addLoading"
+      >
+        <a-form :model="addByAccountForm" layout="vertical">
+          <a-form-item label="用户账号列表">
+            <a-textarea
+              v-model:value="addByAccountForm.accounts"
+              placeholder="请输入用户账号，每行一个账号"
+              :rows="6"
+            />
+            <div class="form-tip">每行输入一个账号，系统将自动生成密码</div>
+          </a-form-item>
+        </a-form>
+      </a-modal>
 
-    <!-- 按数量批量创建用户模态框 -->
-    <a-modal
-      v-model:open="addBySizeVisible"
-      title="批量创建用户(按数量)"
-      width="400px"
-      @ok="handleAddBySize"
-      :confirm-loading="addLoading"
-    >
-      <a-form :model="addBySizeForm" layout="vertical">
-        <a-form-item label="创建数量">
-          <a-input-number
-            v-model:value="addBySizeForm.size"
-            :min="1"
-            :max="1000"
-            placeholder="请输入要创建的用户数量"
-            style="width: 100%"
-          />
-          <div class="form-tip">系统将自动生成账号和密码，最多支持1000个</div>
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      <!-- 按数量批量创建用户模态框 -->
+      <a-modal
+        v-model:open="addBySizeVisible"
+        title="批量创建用户(按数量)"
+        width="400px"
+        @ok="handleAddBySize"
+        :confirm-loading="addLoading"
+      >
+        <a-form :model="addBySizeForm" layout="vertical">
+          <a-form-item label="创建数量">
+            <a-input-number
+              v-model:value="addBySizeForm.size"
+              :min="1"
+              :max="1000"
+              placeholder="请输入要创建的用户数量"
+              style="width: 100%"
+            />
+            <div class="form-tip">系统将自动生成账号和密码，最多支持1000个</div>
+          </a-form-item>
+        </a-form>
+      </a-modal>
 
-    <!-- 用户详情模态框 -->
-    <a-modal v-model:open="userDetailVisible" title="用户详情" width="600px" :footer="null">
-      <div v-if="currentUser" class="user-detail">
-        <!-- 用户头像 -->
-        <div class="user-avatar-section">
-          <UserAvatar :size="80" :user-id="currentUser.id" />
-          <div class="user-basic-info">
-            <h3>{{ currentUser.name || currentUser.account }}</h3>
-            <p class="user-account">@{{ currentUser.account }}</p>
+      <!-- 用户详情模态框 -->
+      <a-modal v-model:open="userDetailVisible" title="用户详情" width="600px" :footer="null">
+        <div v-if="currentUser" class="user-detail">
+          <!-- 用户头像 -->
+          <div class="user-avatar-section">
+            <UserAvatar :size="80" :user-id="currentUser.id" />
+            <div class="user-basic-info">
+              <h3>{{ currentUser.name || currentUser.account }}</h3>
+              <p class="user-account">@{{ currentUser.account }}</p>
+            </div>
           </div>
+
+          <!-- 用户简介 -->
+          <div class="user-profile-section" v-if="currentUser.profile">
+            <h4>用户简介</h4>
+            <p class="user-profile">{{ currentUser.profile }}</p>
+          </div>
+
+          <!-- 详细信息 -->
+          <a-descriptions :column="2" bordered>
+            <a-descriptions-item label="用户ID">{{ currentUser.id }}</a-descriptions-item>
+            <a-descriptions-item label="邮箱">{{
+              currentUser.email || '未设置'
+            }}</a-descriptions-item>
+            <a-descriptions-item label="状态">
+              <a-tag :color="currentUser.status === 1 ? 'green' : 'red'">
+                {{ currentUser.status === 1 ? '正常' : '禁用' }}
+              </a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="角色">
+              <a-tag :color="currentUser.role === 'ADMIN' ? 'blue' : 'default'">
+                {{ currentUser.role === 'ADMIN' ? '管理员' : '普通用户' }}
+              </a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="创建时间" :span="2">
+              {{ currentUser.createTime }}
+            </a-descriptions-item>
+            <a-descriptions-item label="更新时间" :span="2">
+              {{ currentUser.updateTime }}
+            </a-descriptions-item>
+          </a-descriptions>
         </div>
+      </a-modal>
 
-        <!-- 用户简介 -->
-        <div class="user-profile-section" v-if="currentUser.profile">
-          <h4>用户简介</h4>
-          <p class="user-profile">{{ currentUser.profile }}</p>
-        </div>
+      <!-- 创建用户结果展示模态框 -->
+      <a-modal v-model:open="showCreatedUsersModal" title="用户创建成功" width="800px" :footer="null">
+        <div class="created-users-result">
+          <a-alert
+            message="用户创建成功"
+            :description="`成功创建 ${currentCreatedUsers.length} 个用户，请妥善保存账号密码信息`"
+            type="success"
+            show-icon
+            style="margin-bottom: 16px"
+          />
 
-        <!-- 详细信息 -->
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item label="用户ID">{{ currentUser.id }}</a-descriptions-item>
-          <a-descriptions-item label="邮箱">{{
-            currentUser.email || '未设置'
-          }}</a-descriptions-item>
-          <a-descriptions-item label="状态">
-            <a-tag :color="currentUser.status === 1 ? 'green' : 'red'">
-              {{ currentUser.status === 1 ? '正常' : '禁用' }}
-            </a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="角色">
-            <a-tag :color="currentUser.role === 'ADMIN' ? 'blue' : 'default'">
-              {{ currentUser.role === 'ADMIN' ? '管理员' : '普通用户' }}
-            </a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="创建时间" :span="2">
-            {{ currentUser.createTime }}
-          </a-descriptions-item>
-          <a-descriptions-item label="更新时间" :span="2">
-            {{ currentUser.updateTime }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </div>
-    </a-modal>
+          <div class="result-actions" style="margin-bottom: 16px">
+            <a-space>
+              <a-button type="primary" @click="exportCreatedUsers()">
+                <DownloadOutlined /> 导出当前创建的用户
+              </a-button>
+              <a-button
+                @click="exportAllCreatedUsers()"
+                v-if="createdUsers.length > currentCreatedUsers.length"
+              >
+                <DownloadOutlined /> 导出本次所有创建的用户 ({{ createdUsers.length }}个)
+              </a-button>
+            </a-space>
+          </div>
 
-    <!-- 创建用户结果展示模态框 -->
-    <a-modal v-model:open="showCreatedUsersModal" title="用户创建成功" width="800px" :footer="null">
-      <div class="created-users-result">
-        <a-alert
-          message="用户创建成功"
-          :description="`成功创建 ${currentCreatedUsers.length} 个用户，请妥善保存账号密码信息`"
-          type="success"
-          show-icon
-          style="margin-bottom: 16px"
-        />
-
-        <div class="result-actions" style="margin-bottom: 16px">
-          <a-space>
-            <a-button type="primary" @click="exportCreatedUsers()">
-              <DownloadOutlined /> 导出当前创建的用户
-            </a-button>
-            <a-button
-              @click="exportAllCreatedUsers()"
-              v-if="createdUsers.length > currentCreatedUsers.length"
-            >
-              <DownloadOutlined /> 导出本次所有创建的用户 ({{ createdUsers.length }}个)
-            </a-button>
-          </a-space>
-        </div>
-
-        <a-table
-          :columns="createdUsersColumns"
-          :data-source="currentCreatedUsers"
-          :pagination="false"
-          size="small"
-          bordered
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'password'">
-              <a-typography-text copyable>{{ record.password }}</a-typography-text>
+          <a-table
+            :columns="createdUsersColumns"
+            :data-source="currentCreatedUsers"
+            :pagination="false"
+            size="small"
+            bordered
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'password'">
+                <a-typography-text copyable>{{ record.password }}</a-typography-text>
+              </template>
+              <template v-if="column.key === 'account'">
+                <a-typography-text copyable>{{ record.account }}</a-typography-text>
+              </template>
             </template>
-            <template v-if="column.key === 'account'">
-              <a-typography-text copyable>{{ record.account }}</a-typography-text>
-            </template>
-          </template>
-        </a-table>
-      </div>
-    </a-modal>
-  </div>
+          </a-table>
+        </div>
+      </a-modal>
+    </template>
+  </AdminPageWrapper>
 </template>
 
 <script setup lang="ts">
@@ -264,6 +262,7 @@ import {
   adminGetList,
 } from '@/api/userController.ts'
 import UserAvatar from '@/components/User/Avatar/index.vue'
+import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
 
 // 搜索表单
 const searchForm = reactive<API.UserQueryReqVo>({
@@ -568,27 +567,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.user-manager {
-  padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-header h2 {
-  margin: 0;
-  color: #262626;
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.search-card,
-.action-card,
-.table-card {
-  margin-bottom: 16px;
-}
-
 .form-tip {
   margin-top: 4px;
   color: #8c8c8c;
@@ -651,17 +629,5 @@ onMounted(() => {
 
 .result-actions {
   text-align: center;
-}
-
-:deep(.ant-table) {
-  .ant-table-thead > tr > th {
-    background-color: #fafafa;
-    font-weight: 600;
-  }
-}
-
-:deep(.ant-descriptions-item-label) {
-  font-weight: 600;
-  background-color: #fafafa;
 }
 </style>

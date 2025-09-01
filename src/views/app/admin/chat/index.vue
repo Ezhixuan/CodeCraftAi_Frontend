@@ -1,12 +1,7 @@
 <template>
-  <div class="chat-history-manager">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h2>对话历史管理</h2>
-    </div>
-
+  <AdminPageWrapper title="对话历史管理">
     <!-- 搜索表单 -->
-    <a-card class="search-card" title="搜索条件">
+    <template #searchForm>
       <a-form :model="searchForm" layout="inline" @finish="handleSearch" @reset="handleReset">
         <a-form-item label="对话ID" name="id">
           <a-input v-model:value="searchForm.id" placeholder="请输入对话ID" style="width: 150px" />
@@ -58,10 +53,10 @@
           </a-space>
         </a-form-item>
       </a-form>
-    </a-card>
+    </template>
 
     <!-- 对话历史列表 -->
-    <a-card class="table-card" title="对话历史列表">
+    <template #default>
       <a-table
         :columns="columns"
         :data-source="chatList"
@@ -69,7 +64,7 @@
         :loading="loading"
         row-key="id"
         @change="handleTableChange"
-        :scroll="{ x: 1200 }"
+        :scroll="{ x: 'max-content' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'messageType'">
@@ -117,49 +112,51 @@
           </template>
         </template>
       </a-table>
-    </a-card>
+    </template>
 
     <!-- 对话详情模态框 -->
-    <a-modal v-model:open="chatDetailVisible" title="对话详情" width="800px" :footer="null">
-      <div v-if="currentChat" class="chat-detail">
-        <!-- 基本信息 -->
-        <div class="chat-header-section">
-          <div class="chat-basic-info">
-            <h3>对话记录 #{{ currentChat.id }}</h3>
-            <div class="chat-meta">
+    <template #modals>
+      <a-modal v-model:open="chatDetailVisible" title="对话详情" width="800px" :footer="null">
+        <div v-if="currentChat" class="chat-detail">
+          <!-- 基本信息 -->
+          <div class="chat-header-section">
+            <div class="chat-basic-info">
+              <h3>对话记录 #{{ currentChat.id }}</h3>
+              <div class="chat-meta">
+                <a-tag :color="currentChat.messageType === 'USER' ? 'blue' : 'green'">
+                  {{ currentChat.messageType === 'USER' ? '用户消息' : 'AI回复' }}
+                </a-tag>
+                <span class="create-time">{{ currentChat.createTime }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 关联信息 -->
+          <a-descriptions :column="2" bordered style="margin-bottom: 24px">
+            <a-descriptions-item label="对话ID">{{ currentChat.id }}</a-descriptions-item>
+            <a-descriptions-item label="应用ID">{{ currentChat.appId || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="用户ID">{{ currentChat.userId || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="消息类型">
               <a-tag :color="currentChat.messageType === 'USER' ? 'blue' : 'green'">
                 {{ currentChat.messageType === 'USER' ? '用户消息' : 'AI回复' }}
               </a-tag>
-              <span class="create-time">{{ currentChat.createTime }}</span>
+            </a-descriptions-item>
+            <a-descriptions-item label="创建时间" :span="2">{{
+              currentChat.createTime
+            }}</a-descriptions-item>
+          </a-descriptions>
+
+          <!-- 消息内容 -->
+          <div class="chat-content-section">
+            <h4>消息内容</h4>
+            <div class="chat-content">
+              <MarkdownReader :content="currentChat.message" />
             </div>
           </div>
         </div>
-
-        <!-- 关联信息 -->
-        <a-descriptions :column="2" bordered style="margin-bottom: 24px">
-          <a-descriptions-item label="对话ID">{{ currentChat.id }}</a-descriptions-item>
-          <a-descriptions-item label="应用ID">{{ currentChat.appId || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="用户ID">{{ currentChat.userId || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="消息类型">
-            <a-tag :color="currentChat.messageType === 'USER' ? 'blue' : 'green'">
-              {{ currentChat.messageType === 'USER' ? '用户消息' : 'AI回复' }}
-            </a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="创建时间" :span="2">{{
-            currentChat.createTime
-          }}</a-descriptions-item>
-        </a-descriptions>
-
-        <!-- 消息内容 -->
-        <div class="chat-content-section">
-          <h4>消息内容</h4>
-          <div class="chat-content">
-            <pre>{{ currentChat.message }}</pre>
-          </div>
-        </div>
-      </div>
-    </a-modal>
-  </div>
+      </a-modal>
+    </template>
+  </AdminPageWrapper>
 </template>
 
 <script setup lang="ts">
@@ -170,13 +167,15 @@ import { ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import type { Dayjs } from 'dayjs'
 import { adminList } from '@/api/chatHistoryController.ts'
 import DateUtil from '@/utils/DateUtil.ts'
+import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
+import MarkdownReader from '@/components/Markdown/index.vue'
 
 // 搜索表单
 const searchForm = reactive<{
   pageNo: number
   pageSize: number
   id?: string
-  appId: string
+  appId?: string
   userId?: string
   messageType?: string
   dateRange?: [Dayjs, Dayjs]
@@ -186,7 +185,7 @@ const searchForm = reactive<{
   pageNo: 1,
   pageSize: 10,
   id: undefined,
-  appId: '-1',
+  appId: undefined,
   userId: undefined,
   messageType: undefined,
   dateRange: undefined,
@@ -216,48 +215,49 @@ const columns: TableColumnsType = [
     title: 'ID',
     dataIndex: 'id',
     key: 'id',
-    width: 80,
+    width: 120,
     fixed: 'left',
   },
   {
     title: '消息类型',
     dataIndex: 'messageType',
     key: 'messageType',
-    width: 100,
+    width: 120,
+    fixed: 'left',
   },
   {
     title: '消息内容',
     dataIndex: 'content',
     key: 'content',
-    width: 300,
+    width: 400,
   },
   {
     title: '应用信息',
     key: 'appInfo',
-    width: 150,
+    width: 200,
   },
   {
     title: '用户信息',
     key: 'userInfo',
-    width: 150,
+    width: 200,
   },
   {
     title: '创建时间',
     dataIndex: 'createTime',
     key: 'createTime',
-    width: 180,
+    width: 200,
   },
   {
     title: '操作',
     key: 'action',
-    width: 150,
+    width: 180,
     fixed: 'right',
   },
 ]
 
 // 对话详情
 const chatDetailVisible = ref(false)
-const currentChat = ref<API.ChatInfoResVo | null>(null)
+const currentChat = ref<API.ChatInfoResVo>()
 
 // 获取对话历史列表
 const getChatList = async () => {
@@ -362,25 +362,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.chat-history-manager {
-  padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-header h2 {
-  margin: 0;
-  color: #262626;
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.search-card,
-.table-card {
-  margin-bottom: 16px;
-}
 
 .message-content {
   max-width: 300px;
@@ -469,6 +450,10 @@ onMounted(() => {
   .ant-table-thead > tr > th {
     background-color: #fafafa;
     font-weight: 600;
+  }
+
+  .ant-table {
+    min-width: 100%;
   }
 }
 

@@ -1,19 +1,10 @@
 <template>
-  <div class="app-manager">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h2>应用管理</h2>
-    </div>
-
+  <AdminPageWrapper title="应用管理">
     <!-- 搜索表单 -->
-    <a-card class="search-card" title="搜索条件">
+    <template #searchForm>
       <a-form :model="searchForm" layout="inline" @finish="handleSearch" @reset="handleReset">
         <a-form-item label="应用ID" name="id">
-          <a-input
-            v-model:value="searchForm.id"
-            placeholder="请输入应用ID"
-            style="width: 150px"
-          />
+          <a-input v-model:value="searchForm.id" placeholder="请输入应用ID" style="width: 150px" />
         </a-form-item>
 
         <a-form-item label="应用名称" name="name">
@@ -31,9 +22,9 @@
             style="width: 150px"
             allow-clear
           >
-            <a-select-option value="REACT">React</a-select-option>
-            <a-select-option value="VUE">Vue</a-select-option>
-            <a-select-option value="HTML">HTML</a-select-option>
+            <a-select-option v-for="item in codeGenTypeList" :key="item.key" :value="item.key">
+              {{ item.value }}
+            </a-select-option>
           </a-select>
         </a-form-item>
 
@@ -54,10 +45,10 @@
           </a-space>
         </a-form-item>
       </a-form>
-    </a-card>
+    </template>
 
     <!-- 应用列表 -->
-    <a-card class="table-card" title="应用列表">
+    <template #default>
       <a-table
         :columns="columns"
         :data-source="appList"
@@ -118,134 +109,148 @@
           </template>
         </template>
       </a-table>
-    </a-card>
+    </template>
 
     <!-- 应用详情模态框 -->
-    <a-modal v-model:open="appDetailVisible" title="应用详情" width="800px" :footer="null">
-      <div v-if="currentApp" class="app-detail">
-        <!-- 应用基本信息 -->
-        <div class="app-header-section">
-          <div class="app-cover-large">
-            <a-image
-              v-if="currentApp.cover"
-              :src="currentApp.cover"
-              :width="120"
-              :height="80"
-              :preview="true"
-              style="object-fit: cover; border-radius: 8px"
-            />
-            <div v-else class="no-cover-large">
-              <FileImageOutlined style="font-size: 48px; color: #ccc" />
+    <template #modals>
+      <a-modal v-model:open="appDetailVisible" title="应用详情" width="800px" :footer="null">
+        <div v-if="currentApp" class="app-detail">
+          <!-- 应用基本信息 -->
+          <div class="app-header-section">
+            <div class="app-cover-large">
+              <a-image
+                v-if="currentApp.cover"
+                :src="currentApp.cover"
+                :width="120"
+                :height="80"
+                :preview="true"
+                style="object-fit: cover; border-radius: 8px"
+              />
+              <div v-else class="no-cover-large">
+                <FileImageOutlined style="font-size: 48px; color: #ccc" />
+              </div>
+            </div>
+            <div class="app-basic-info">
+              <h3>{{ currentApp.name }}</h3>
+              <p class="app-id">ID: {{ currentApp.id }}</p>
+              <div class="app-tags">
+                <a-tag :color="getCodeGenTypeColor(currentApp.codeGenType)">
+                  {{ currentApp.codeGenType }}
+                </a-tag>
+                <a-tag :color="currentApp.deployTime ? 'green' : 'orange'">
+                  {{ currentApp.deployTime ? '已部署' : '未部署' }}
+                </a-tag>
+                <a-tag :color="getPriorityColor(currentApp.priority)">
+                  {{ currentApp.priority }}
+                </a-tag>
+              </div>
             </div>
           </div>
-          <div class="app-basic-info">
-            <h3>{{ currentApp.name }}</h3>
-            <p class="app-id">ID: {{ currentApp.id }}</p>
-            <div class="app-tags">
-              <a-tag :color="getCodeGenTypeColor(currentApp.codeGenType)">
-                {{ currentApp.codeGenType }}
-              </a-tag>
-              <a-tag :color="currentApp.deployTime ? 'green' : 'orange'">
-                {{ currentApp.deployTime ? '已部署' : '未部署' }}
-              </a-tag>
-              <a-tag :color="getPriorityColor(currentApp.priority)">
-                {{ currentApp.priority }}
-              </a-tag>
+
+          <!-- 初始提示 -->
+          <div class="app-prompt-section" v-if="currentApp.initPrompt">
+            <h4>初始提示</h4>
+            <div class="app-prompt">{{ currentApp.initPrompt }}</div>
+          </div>
+
+          <!-- 详细信息 -->
+          <a-descriptions :column="2" bordered>
+            <a-descriptions-item label="应用ID">{{ currentApp.id }}</a-descriptions-item>
+            <a-descriptions-item label="应用名称">{{ currentApp.name }}</a-descriptions-item>
+            <a-descriptions-item label="代码生成类型">{{
+              currentApp.codeGenType
+            }}</a-descriptions-item>
+            <a-descriptions-item label="优先级">{{ currentApp.priority }}</a-descriptions-item>
+            <a-descriptions-item label="部署密钥">{{
+              currentApp.deployKey || '未设置'
+            }}</a-descriptions-item>
+            <a-descriptions-item label="部署时间">{{
+              currentApp.deployTime || '未部署'
+            }}</a-descriptions-item>
+            <a-descriptions-item label="创建者" v-if="currentApp.userInfo">
+              {{ currentApp.userInfo.name || currentApp.userInfo.account }}
+            </a-descriptions-item>
+            <a-descriptions-item label="用户ID" v-if="currentApp.userInfo">
+              {{ currentApp.userInfo.id }}
+            </a-descriptions-item>
+            <a-descriptions-item label="创建时间" :span="2">
+              {{ currentApp.createTime }}
+            </a-descriptions-item>
+            <a-descriptions-item label="更新时间" :span="2">
+              {{ currentApp.updateTime }}
+            </a-descriptions-item>
+          </a-descriptions>
+        </div>
+      </a-modal>
+
+      <!-- 编辑应用模态框 -->
+      <a-modal
+        v-model:open="editAppVisible"
+        title="编辑应用信息"
+        width="600px"
+        @ok="handleUpdateApp"
+        :confirm-loading="updateLoading"
+      >
+        <a-form :model="editForm" layout="vertical" ref="editFormRef">
+          <a-form-item
+            label="应用名称"
+            name="name"
+            :rules="[{ required: true, message: '请输入应用名称' }]"
+          >
+            <a-input v-model:value="editForm.name" placeholder="请输入应用名称" />
+          </a-form-item>
+
+          <a-form-item label="应用封面" name="cover">
+            <a-input v-model:value="editForm.cover" placeholder="请输入封面图片URL" />
+            <div class="form-tip">请输入有效的图片URL地址</div>
+            <div v-if="editForm.cover" class="cover-preview">
+              <a-image
+                :src="editForm.cover"
+                :width="120"
+                :height="80"
+                :preview="true"
+                style="object-fit: cover; border-radius: 4px; margin-top: 8px"
+              />
             </div>
-          </div>
-        </div>
+          </a-form-item>
 
-        <!-- 初始提示 -->
-        <div class="app-prompt-section" v-if="currentApp.initPrompt">
-          <h4>初始提示</h4>
-          <div class="app-prompt">{{ currentApp.initPrompt }}</div>
-        </div>
+          <a-form-item label="部署密钥" name="deployKey">
+            <a-input v-model:value="editForm.deployKey" placeholder="请输入部署密钥" />
+            <div class="form-tip">用于应用部署的唯一标识</div>
+          </a-form-item>
 
-        <!-- 详细信息 -->
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item label="应用ID">{{ currentApp.id }}</a-descriptions-item>
-          <a-descriptions-item label="应用名称">{{ currentApp.name }}</a-descriptions-item>
-          <a-descriptions-item label="代码生成类型">{{ currentApp.codeGenType }}</a-descriptions-item>
-          <a-descriptions-item label="优先级">{{ currentApp.priority }}</a-descriptions-item>
-          <a-descriptions-item label="部署密钥">{{ currentApp.deployKey || '未设置' }}</a-descriptions-item>
-          <a-descriptions-item label="部署时间">{{ currentApp.deployTime || '未部署' }}</a-descriptions-item>
-          <a-descriptions-item label="创建者" v-if="currentApp.userInfo">
-            {{ currentApp.userInfo.name || currentApp.userInfo.account }}
-          </a-descriptions-item>
-          <a-descriptions-item label="用户ID" v-if="currentApp.userInfo">
-            {{ currentApp.userInfo.id }}
-          </a-descriptions-item>
-          <a-descriptions-item label="创建时间" :span="2">
-            {{ currentApp.createTime }}
-          </a-descriptions-item>
-          <a-descriptions-item label="更新时间" :span="2">
-            {{ currentApp.updateTime }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </div>
-    </a-modal>
-
-    <!-- 编辑应用模态框 -->
-    <a-modal
-      v-model:open="editAppVisible"
-      title="编辑应用信息"
-      width="600px"
-      @ok="handleUpdateApp"
-      :confirm-loading="updateLoading"
-    >
-      <a-form :model="editForm" layout="vertical" ref="editFormRef">
-        <a-form-item label="应用名称" name="name" :rules="[{ required: true, message: '请输入应用名称' }]">
-          <a-input v-model:value="editForm.name" placeholder="请输入应用名称" />
-        </a-form-item>
-
-        <a-form-item label="应用封面" name="cover">
-          <a-input v-model:value="editForm.cover" placeholder="请输入封面图片URL" />
-          <div class="form-tip">请输入有效的图片URL地址</div>
-          <div v-if="editForm.cover" class="cover-preview">
-            <a-image
-              :src="editForm.cover"
-              :width="120"
-              :height="80"
-              :preview="true"
-              style="object-fit: cover; border-radius: 4px; margin-top: 8px"
+          <a-form-item label="优先级" name="priority">
+            <a-input-number
+              v-model:value="editForm.priority"
+              placeholder="请输入优先级数字"
+              :min="0"
+              style="width: 100%"
             />
-          </div>
-        </a-form-item>
-
-        <a-form-item label="部署密钥" name="deployKey">
-          <a-input v-model:value="editForm.deployKey" placeholder="请输入部署密钥" />
-          <div class="form-tip">用于应用部署的唯一标识</div>
-        </a-form-item>
-
-        <a-form-item label="优先级" name="priority">
-          <a-input-number v-model:value="editForm.priority" placeholder="请输入优先级数字" :min="0" style="width: 100%" />
-          <div class="form-tip">请输入数字，0为最低优先级</div>
-        </a-form-item>
-      </a-form>
-    </a-modal>
-  </div>
+            <div class="form-tip">请输入数字，0为最低优先级</div>
+          </a-form-item>
+        </a-form>
+      </a-modal>
+    </template>
+  </AdminPageWrapper>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
-import {
-  SearchOutlined,
-  ReloadOutlined,
-  FileImageOutlined,
-} from '@ant-design/icons-vue'
-import {
-  adminGetList1,
-  adminGetInfo,
-  adminUpdate,
-} from '@/api/adminAppController.ts'
+import { SearchOutlined, ReloadOutlined, FileImageOutlined } from '@ant-design/icons-vue'
+import { adminGetList1, adminGetInfo, adminUpdate } from '@/api/adminAppController.ts'
 import type { TableColumnsType, TableProps, FormInstance } from 'ant-design-vue'
+import { useEnumStore } from '@/stores/enum.ts'
+import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
+
+// 代码生成类型列表
+const codeGenTypeList = ref<API.KeyValueResVo[]>([])
 
 // 搜索表单
 const searchForm = reactive<API.AppQueryReqVo>({
   pageNo: 1,
   pageSize: 10,
-  orderBy: "desc",
+  orderBy: 'desc',
   id: undefined,
   name: undefined,
   codeGenType: undefined,
@@ -341,6 +346,19 @@ const editForm = reactive<API.AppUpdateAdminReqVo>({
   deployKey: undefined,
   priority: undefined,
 })
+
+let enumStore = useEnumStore()
+
+/**
+ * 获取代码生成类型列表
+ */
+const getCodeGenTypes = async () => {
+  try {
+    codeGenTypeList.value = await enumStore.loadCodeGenTypeList()
+  } catch (error) {
+    console.error('获取代码生成类型失败:', error)
+  }
+}
 
 /**
  * 获取应用列表
@@ -477,35 +495,14 @@ const getPriorityColor = (priority?: number) => {
   }
 }
 
-
-
 // 页面初始化
 onMounted(() => {
   getAppList()
+  getCodeGenTypes()
 })
 </script>
 
 <style scoped>
-.app-manager {
-  padding: 24px;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-header h2 {
-  margin: 0;
-  color: #262626;
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.search-card,
-.table-card {
-  margin-bottom: 16px;
-}
-
 .form-tip {
   margin-top: 4px;
   color: #8c8c8c;
@@ -607,17 +604,5 @@ onMounted(() => {
 
 .cover-preview {
   margin-top: 8px;
-}
-
-:deep(.ant-table) {
-  .ant-table-thead > tr > th {
-    background-color: #fafafa;
-    font-weight: 600;
-  }
-}
-
-:deep(.ant-descriptions-item-label) {
-  font-weight: 600;
-  background-color: #fafafa;
 }
 </style>
