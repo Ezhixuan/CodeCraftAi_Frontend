@@ -216,7 +216,12 @@
               <div class="preview-actions">
                 <!-- 只有当originalDirStatus为LOADED时才显示按钮 -->
                 <template v-if="appStatus.originalDirStatus === 'LOADED'">
-                  <a-button v-if="preview.url" size="small" type="text" @click="openPreviewInNewTab">
+                  <a-button
+                    v-if="preview.url"
+                    size="small"
+                    type="text"
+                    @click="openPreviewInNewTab"
+                  >
                     <template #icon><ExportOutlined /></template>
                     新窗口打开
                   </a-button>
@@ -230,8 +235,11 @@
                   >
                     <template #icon><RocketOutlined /></template>
                     {{
-                      appStatus.previewStatus === 'LOADING' ? '预览中...' :
-                      preview.isLoading.value ? '预览中...' : '预览'
+                      appStatus.previewStatus === 'LOADING'
+                        ? '预览中...'
+                        : preview.isLoading.value
+                          ? '预览中...'
+                          : '预览'
                     }}
                   </a-button>
 
@@ -244,8 +252,11 @@
                     size="small"
                   >
                     {{
-                      appStatus.deployStatus === 'LOADING' ? '部署中' :
-                      appStatus.deployStatus === 'LOADED' ? '重新部署' : '部署'
+                      appStatus.deployStatus === 'LOADING'
+                        ? '部署中'
+                        : appStatus.deployStatus === 'LOADED'
+                          ? '重新部署'
+                          : '部署'
                     }}
                   </a-button>
 
@@ -265,7 +276,10 @@
             </div>
             <div class="preview-content">
               <!-- 加载状态 -->
-              <div v-if="appStatus.previewStatus === 'LOADING' || preview.isLoading.value" class="loading-container">
+              <div
+                v-if="appStatus.previewStatus === 'LOADING' || preview.isLoading.value"
+                class="loading-container"
+              >
                 <a-spin size="large">
                   <template #indicator>
                     <LoadingOutlined style="font-size: 24px" spin />
@@ -284,7 +298,12 @@
               </div>
 
               <!-- 预览iframe -->
-              <div v-else-if="preview.url.value && preview.preview.value && appStatus.previewStatus === 'LOADED'" class="iframe-container">
+              <div
+                v-else-if="
+                  preview.url.value && preview.preview.value && appStatus.previewStatus === 'LOADED'
+                "
+                class="iframe-container"
+              >
                 <iframe
                   :src="preview.url.value"
                   frameborder="0"
@@ -327,7 +346,14 @@ import {
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownRenderer from '@/components/MarkdownComponent.vue'
 import InputComponent from '@/components/InputComponent.vue'
-import { getInfo, getList, doPreview, doDeploy, getStatus, doDownload } from '@/api/yingyongkongzhiqi'
+import {
+  getInfo,
+  getList,
+  doPreview,
+  doDeploy,
+  getStatus,
+  doDownload,
+} from '@/api/yingyongkongzhiqi'
 import { list1 } from '@/api/duihualishi'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { BASE_URL } from '@/config/apiConfig'
@@ -550,23 +576,23 @@ const getAppInfo = async (currentAppId: string) => {
  * @param currentAppId 应用id
  */
 const getAppStatus = async (currentAppId?: string) => {
-   const targetAppId = currentAppId || appId.value
-   if (!targetAppId) return
-   try {
-     appStatus.loading = true
-     appStatus.error = ''
-     const response = await getStatus({ appId: targetAppId })
+  const targetAppId = currentAppId || appId.value
+  if (!targetAppId) return
+  try {
+    appStatus.loading = true
+    appStatus.error = ''
+    const response = await getStatus({ appId: targetAppId })
     if (response.data.data) {
       const statusData = response.data.data
       appStatus.deployStatus = statusData.deployStatus || ''
-       appStatus.previewStatus = statusData.previewStatus || ''
-       appStatus.originalDirStatus = statusData.originalDirStatus || ''
+      appStatus.previewStatus = statusData.previewStatus || ''
+      appStatus.originalDirStatus = statusData.originalDirStatus || ''
 
-       // 更新预览状态
-        preview.preview.value = statusData.previewStatus === 'LOADED'
-        if (preview.preview.value) {
-          preview.url.value = getPreviewUrl()
-        }
+      // 更新预览状态
+      preview.preview.value = statusData.previewStatus === 'LOADED'
+      if (preview.preview.value) {
+        preview.url.value = getPreviewUrl()
+      }
     }
   } catch (error) {
     console.error('获取应用状态失败:', error)
@@ -861,16 +887,16 @@ const handlePreview = async () => {
 
   try {
     // 调用新的预览接口
-    await doPreview({ appId: appId.value, reBuild: false })
+    await doPreview({ appId: appId.value, reBuild: true })
 
     // 预览成功后更新iframe URL
-     preview.url.value = getPreviewUrl()
+    preview.url.value = getPreviewUrl()
     preview.progressText.value = '部署完成！'
     preview.preview.value = true
     message.success('应用部署成功！')
 
     // 获取最新状态
-     await getAppStatus()
+    await getAppStatus()
   } catch (error) {
     console.error('部署预览出错:', error)
     message.error('部署失败，请重试')
@@ -892,7 +918,7 @@ const handleDeployClick = async () => {
       content: '应用已部署，是否重新部署？',
       okText: '确认',
       cancelText: '取消',
-      onOk: () => handleDeploy(true)
+      onOk: () => handleDeploy(true),
     })
   } else {
     await handleDeploy(false)
@@ -1344,21 +1370,51 @@ const handleDownloadClick = async () => {
   }
 
   try {
-     downloadLoading.value = true
-     const response = await doDownload({ appId: appId.value })
-     
-     // 创建下载链接
-     const blob = new Blob([response.data], { type: 'application/zip' })
-     const url = window.URL.createObjectURL(blob)
-     const link = document.createElement('a')
-     link.href = url
-     link.download = `${appInfo.value?.name || 'app'}_code.zip`
-     document.body.appendChild(link)
-     link.click()
-     document.body.removeChild(link)
-     window.URL.revokeObjectURL(url)
-     
-     message.success('代码下载成功')
+    downloadLoading.value = true
+    const url = `${BASE_URL}/app/download/${appId.value}`
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      throw new Error(`下载失败: ${response.status}`)
+    }
+
+    // 验证 Content-Type
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('application/zip')) {
+      throw new Error('不支持的文件类型')
+    }
+
+    // 获取文件名
+    const contentDisposition = response.headers.get('Content-Disposition')
+    const fileName =
+      contentDisposition?.match(/filename="(.+)"/)?.[1] ||
+      `${appInfo.value?.name || 'app'}_code.zip`
+
+    // 获取原始二进制数据
+    const blob = await response.blob()
+
+    // 验证ZIP文件头
+    const arrayBuffer = await blob.arrayBuffer()
+    const view = new DataView(arrayBuffer)
+    const zipHeader = (view.getUint8(0) << 8) + view.getUint8(1)
+    if (zipHeader !== 0x504b) {
+      throw new Error('不是有效的ZIP文件')
+    }
+
+    // 创建下载链接
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(downloadUrl)
+
+    message.success('代码下载成功')
   } catch (error) {
     console.error('下载失败:', error)
     message.error('下载失败，请稍后重试')
@@ -1372,8 +1428,8 @@ const handleDownloadClick = async () => {
  * @param currentAppId 应用ID
  */
 const getPreviewUrl = () => {
-   return `${BASE_URL}/app/preview/${appId.value}`
- }
+  return `${BASE_URL}/app/preview/${appId.value}`
+}
 
 // 组件卸载时清理防抖定时器
 onUnmounted(() => {

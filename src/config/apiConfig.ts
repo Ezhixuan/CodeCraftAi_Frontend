@@ -10,7 +10,7 @@ export interface ApiConfig {
 }
 
 export const apiConfig: ApiConfig = {
-  baseURL: 'http://localhost:8911/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 60000,
   withCredentials: true,
 }
