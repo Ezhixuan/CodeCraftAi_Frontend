@@ -1,11 +1,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getUserInfo } from '@/api/yonghukongzhiqi'
-import type { UserInfoCommonResVo } from '@/api/typings.d.ts'
 
 export const useLoginUserStore = defineStore('loginUser', () => {
   // 设置默认值
-  const loginUser = ref<UserInfoCommonResVo>({
+  const loginUser = ref<API.UserInfoCommonResVo>({
     id: '-1',
     name: '未登录',
     role: 'GUEST',
@@ -15,19 +14,16 @@ export const useLoginUserStore = defineStore('loginUser', () => {
   async function fetchLoginUserInfo() {
     try {
       const res = await getUserInfo()
-      if (res.data.code === 0 && res.data.data) {
+      if (res.data.data) {
         loginUser.value = res.data.data
-      } else {
-        throw new Error(res.data.message || '获取用户信息失败')
       }
     } catch (error) {
-      console.error('获取登录用户信息失败:', error)
-      // 保持默认的未登录状态
+      logout()
     }
   }
 
   // 更新登录用户信息
-  function setLoginUser(newLoginUserInfo: UserInfoCommonResVo) {
+  function setLoginUser(newLoginUserInfo: API.UserInfoCommonResVo) {
     loginUser.value = newLoginUserInfo
   }
 

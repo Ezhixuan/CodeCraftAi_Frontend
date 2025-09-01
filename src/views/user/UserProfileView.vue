@@ -120,8 +120,8 @@ import { message } from 'ant-design-vue'
 import { CloseOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons-vue'
 import { getUserInfo, updateUserInfo } from '@/api/yonghukongzhiqi'
 import { useLoginUserStore } from '@/stores/loginUser'
-import UserAvatar from '@/components/UserAvatarComponent.vue'
-import CommonBackground from '@/components/CommonBackgroundComponent.vue'
+import UserAvatar from '@/components/User/Avatar/index.vue'
+import CommonBackground from '@/components/Background/Common/index.vue'
 
 // 状态管理
 const loginUserStore = useLoginUserStore()

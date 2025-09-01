@@ -79,33 +79,14 @@ const selectPrompt = (prompt: PresetPrompt) => {
 <style scoped>
 /* 预设提示词容器 */
 .preset-prompts {
-  padding: 5px 20px 20px 20px; /* 移除顶部padding，实现与输入框紧密贴合 */
+  padding: 10px 20px 20px 20px;
   background: rgba(255, 255, 255, 0.02);
-  border-top: none; /* 完全移除顶部边框，避免与输入框产生间距 */
+  border-top: none;
   border-radius: 0 0 8px 8px;
   max-height: v-bind(maxHeight);
   overflow-y: auto;
   box-sizing: border-box;
   margin-top: 0;
-}
-
-/* 标题区域 */
-.preset-prompts-header {
-  margin-bottom: 16px;
-}
-
-.preset-title {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.preset-subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.4;
 }
 
 /* 预设提示词网格 */
@@ -216,14 +197,6 @@ const selectPrompt = (prompt: PresetPrompt) => {
     min-height: 32px;
   }
 
-  .preset-title {
-    font-size: 15px;
-  }
-
-  .preset-subtitle {
-    font-size: 13px;
-  }
-
   .prompt-icon {
     width: 20px;
     height: 20px;
@@ -251,10 +224,6 @@ const selectPrompt = (prompt: PresetPrompt) => {
     padding: 12px;
     gap: 8px;
     min-height: 32px;
-  }
-
-  .preset-prompts-header {
-    margin-bottom: 12px;
   }
 }
 

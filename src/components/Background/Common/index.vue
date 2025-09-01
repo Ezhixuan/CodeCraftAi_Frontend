@@ -17,7 +17,7 @@
 /**
  * 通用背景组件
  * 提供深色科技风格的动态背景效果，包含网格覆盖层和浮动粒子动画
- * 使用方式：<CommonBackground><YourContent /></CommonBackground>
+ * 使用方式：<Index><YourContent /></Index>
  * 特点：
  * - 可以直接包裹任何内容使用，无需修改现有页面样式
  * - 背景效果完全独立，不影响内容布局

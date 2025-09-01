@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import CommonBackground from '@/components/CommonBackgroundComponent.vue'
+import CommonBackground from '@/components/Background/Common/index.vue'
 import BrandSection from '@/views/user/auth/components/BrandSection.vue'
 import LoginForm from '@/views/user/auth/components/LoginForm.vue'
 import RegisterForm from '@/views/user/auth/components/RegisterForm.vue'

@@ -1,3 +1,82 @@
+<!--
+  AppCard 应用卡片组件
+  
+  该组件用于展示应用信息的卡片，包含以下特性：
+  1. 应用封面图片展示（支持默认图片）
+  2. 应用名称显示
+  3. 应用作者信息（通过 UserAvatar 组件展示）
+  4. 应用更新时间显示（格式化显示）
+  5. 交互模式（悬停显示操作按钮）
+  
+  Props 说明：
+  - appInfo: 应用信息对象，类型为 API.AppInfoCommonResVo，包含应用的详细信息
+    - cover: 应用封面图片 URL
+    - name: 应用名称
+    - userInfo: 应用作者信息
+    - updateTime: 应用更新时间
+  - interactive: 是否启用交互模式，启用后悬停会显示操作按钮，默认为 false
+  - actionText: 操作按钮文本，如果不提供则默认显示"立即体验"
+  
+  Events 说明：
+  - action: 当用户点击操作按钮时触发
+  
+  Slots 说明：
+  - overlay: 自定义悬停遮罩内容，可以替换默认的操作按钮
+  
+  使用示例：
+  1. 基础用法：
+  <AppCard :app-info="appData" />
+  
+  2. 交互模式：
+  <AppCard 
+    :app-info="appData" 
+    :interactive="true" 
+    action-text="查看详情"
+    @action="handleAppAction"
+  />
+  
+  3. 自定义遮罩内容：
+  <AppCard 
+    :app-info="appData" 
+    :interactive="true"
+    @action="handleAppAction"
+  >
+    <template #overlay>
+      <div class="custom-overlay">
+        <button @click="handleEdit">编辑</button>
+        <button @click="handleDelete">删除</button>
+      </div>
+    </template>
+  </AppCard>
+  
+  对应的数据结构示例：
+  const appData = {
+    id: "1",
+    name: "示例应用",
+    cover: "https://example.com/cover.jpg",
+    updateTime: "2023-05-20T10:30:00Z",
+    userInfo: {
+      id: "101",
+      name: "张三",
+      avatar: "https://example.com/avatar.jpg"
+    }
+  };
+  
+  事件处理函数示例：
+  const handleAppAction = () => {
+    console.log("执行应用操作");
+    // 跳转到应用详情页或其他操作
+  };
+  
+  const handleEdit = () => {
+    console.log("编辑应用");
+  };
+  
+  const handleDelete = () => {
+    console.log("删除应用");
+  };
+-->
+
 <template>
   <div class="app-card" :class="{ 'is-interactive': interactive }">
     <!-- 卡片内容 -->
@@ -46,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import UserAvatar from '../../UserAvatarComponent.vue'
+import UserAvatar from '../../User/Avatar/index.vue'
 
 interface Props {
   appInfo?: API.AppInfoCommonResVo

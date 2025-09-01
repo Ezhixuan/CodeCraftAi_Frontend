@@ -245,6 +245,7 @@ import type { TableColumnsType, TableProps, FormInstance } from 'ant-design-vue'
 const searchForm = reactive<API.AppQueryReqVo>({
   pageNo: 1,
   pageSize: 10,
+  orderBy: "desc",
   id: undefined,
   name: undefined,
   codeGenType: undefined,

@@ -263,7 +263,7 @@ import {
   adminDisable,
   adminGetList,
 } from '@/api/yonghukongzhiqi'
-import UserAvatar from '@/components/UserAvatarComponent.vue'
+import UserAvatar from '@/components/User/Avatar/index.vue'
 
 // 搜索表单
 const searchForm = reactive<API.UserQueryReqVo>({

@@ -35,6 +35,16 @@
         <component :is="icon" />
       </div>
     </div>
+    
+    <!-- 底部工具栏区域 -->
+    <div v-if="$slots['footer-left'] || $slots['footer-right']" class="input-footer">
+      <div class="footer-left">
+        <slot name="footer-left" />
+      </div>
+      <div class="footer-right">
+        <slot name="footer-right" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -124,7 +134,6 @@ const currentPlaceholder = computed(() => {
 const wrapperStyle = computed<CSSProperties>(() => ({
   width: typeof props.width === 'number' ? `${props.width}px` : props.width,
   backgroundColor: props.backgroundColor,
-  '--placeholder-color': props.placeholderColor,
   minHeight: props.autoHeight
     ? undefined
     : typeof props.height === 'number'
@@ -147,6 +156,7 @@ const inputElementStyle = computed<CSSProperties>(() => ({
   color: props.textColor,
   resize: props.multiline ? props.resize : 'none',
   paddingBottom: props.paddingBottom,
+  '--placeholder-color': props.placeholderColor,
 }))
 
 // 打字机效果方法
@@ -300,7 +310,7 @@ onUnmounted(() => {
 }
 
 .base-input-element::placeholder {
-  color: var(--placeholder-color, rgba(255, 255, 255, 0.4));
+  color: v-bind(placeholderColor);
 }
 
 .base-input-element.auto-height {
@@ -344,9 +354,34 @@ onUnmounted(() => {
   height: 24px;
 }
 
+/* 底部工具栏样式 */
+.input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px 12px 12px;
+  box-sizing: border-box;
+}
+
+.footer-left,
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 @media (max-width: 768px) {
   .base-input-element {
     font-size: 16px;
+  }
+  
+  .input-footer {
+    padding: 0 8px 8px 8px;
+  }
+  
+  .footer-left,
+  .footer-right {
+    gap: 4px;
   }
 }
 </style>

@@ -149,7 +149,7 @@
                     <img src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
                   </div>
                   <div class="message-content">
-                    <MarkdownRenderer :content="welcomeMessage" />
+                    <MarkdownReader :content="welcomeMessage" />
                   </div>
                 </div>
 
@@ -164,7 +164,7 @@
                   </div>
 
                   <div class="message-content">
-                    <MarkdownRenderer :content="message.content" />
+                    <MarkdownReader :content="message.content" />
                     <div v-if="message.isLoading" class="generating-indicator">
                       <a-spin size="small" />
                       <span>{{ generatingText }}</span>
@@ -190,7 +190,7 @@
               </div>
 
               <div v-if="isOwner" class="chat-input-area">
-                <InputComponent
+                <Input
                   v-model="newMessage"
                   fontSize="16px"
                   :required="true"
@@ -344,8 +344,8 @@ import {
   RocketOutlined,
 } from '@ant-design/icons-vue'
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
-import MarkdownRenderer from '@/components/MarkdownComponent.vue'
-import InputComponent from '@/components/Input/InputComponent.vue'
+import MarkdownReader from '@/components/Markdown/index.vue'
+import Input from '@/components/Input/index.vue'
 import {
   getInfo,
   getList,
@@ -764,7 +764,7 @@ const startCodeGeneration = async (messageContent: string) => {
   scrollToBottom()
 
   try {
-    const url = `${getBaseUrl}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
+    const url = `${getBaseUrl()}/app/generate/code?message=${encodeURIComponent(messageContent)}&appId=${appId.value}`
     eventSource = new EventSource(url, { withCredentials: true })
     console.log('EventSource 已创建', eventSource)
 
@@ -1371,7 +1371,7 @@ const handleDownloadClick = async () => {
 
   try {
     downloadLoading.value = true
-    const url = `${getBaseUrl}/app/download/${appId.value}`
+    const url = `${getBaseUrl()}/app/download/${appId.value}`
     const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
@@ -1428,7 +1428,7 @@ const handleDownloadClick = async () => {
  * @param currentAppId 应用ID
  */
 const getPreviewUrl = () => {
-  return `${getBaseUrl}/app/preview/${appId.value}`
+  return `${getBaseUrl()}/app/preview/${appId.value}`
 }
 
 // 组件卸载时清理防抖定时器

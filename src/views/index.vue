@@ -9,16 +9,13 @@
         </h1>
         <p class="subtitle">与 AI 对话轻松创建应用和网站</p>
         <div class="input-container">
-          <InputComponent
+          <Input
             v-model="userInput"
             multiline
             :rows="5"
-            width="700px"
             height="150px"
-            fontSize="16px"
             :required="true"
             :show-submit-button="true"
-            :show-optimize-button="true"
             :disabled="isGenerating"
             :submit-button-text="isGenerating ? '生成中' : '生成应用'"
             :enable-typewriter="true"
@@ -29,7 +26,8 @@
             @submit="handleSubmit"
             :show-preset-prompts="true"
             :preset-prompts="prompts"
-
+            preset-prompts-max-height="90px"
+            :preset-prompts-max-columns="5"
           />
         </div>
       </div>
@@ -90,10 +88,10 @@ import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { doGenerate, getFeaturedList, getList } from '@/api/yingyongkongzhiqi'
 import { useLoginUserStore } from '@/stores/loginUser'
-import InputComponent from '@/components/Input/InputComponent.vue'
-import AppCard from '@/components/App/Card/index.vue'
-import CommonBackground from '@/components/CommonBackgroundComponent.vue'
 import router from '@/router'
+import Input from '@/components/Input/index.vue'
+import AppCard from '@/components/App/Card/index.vue'
+import CommonBackground from '@/components/Background/Common/index.vue'
 
 // 登录用户状态
 const loginUserStore = useLoginUserStore()
@@ -121,8 +119,6 @@ const prompts = ref([
     value: '创建一个音乐播放器页面,需要小巧,能够方便在其他页面引入',
   },
 ])
-
-
 
 // 组件挂载时加载数据
 onMounted(() => {
@@ -212,8 +208,6 @@ const handleSubmit = async () => {
     isGenerating.value = false
   }
 }
-
-
 
 /**
  * 处理应用卡片点击事件
