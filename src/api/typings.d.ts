@@ -258,6 +258,13 @@ declare namespace API {
     id: string
   }
 
+  type KeyValueResVo = {
+    /** 枚举 key */
+    key?: Record<string, any>
+    /** 枚举 value */
+    value?: Record<string, any>
+  }
+
   type list1Params = {
     reqVo: ChatQueryReqVo
   }
@@ -278,6 +285,12 @@ declare namespace API {
     message?: string
     code?: number
     data?: PageResVoChatInfoResVo
+  }
+
+  type PageResponseKeyValueResVo = {
+    message?: string
+    code?: number
+    data?: PageResVoKeyValueResVo
   }
 
   type PageResponseString = {
@@ -313,6 +326,12 @@ declare namespace API {
   type PageResVoChatInfoResVo = {
     totalRow?: string
     list?: ChatInfoResVo[]
+    totalPage?: string
+  }
+
+  type PageResVoKeyValueResVo = {
+    totalRow?: string
+    list?: KeyValueResVo[]
     totalPage?: string
   }
 

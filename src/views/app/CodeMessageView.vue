@@ -353,8 +353,8 @@ import {
   doDeploy,
   getStatus,
   doDownload,
-} from '@/api/yingyongkongzhiqi'
-import { list1 } from '@/api/duihualishi'
+} from '@/api/appController.ts'
+import { list1 } from '@/api/chatHistoryController.ts'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { getBaseUrl } from '@/config/env.ts'
 import DateUtil from '@/utils/DateUtil.ts'

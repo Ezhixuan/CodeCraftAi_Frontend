@@ -90,7 +90,7 @@ import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { UserOutlined, LockOutlined, GithubOutlined, GoogleOutlined } from '@ant-design/icons-vue'
 import type { Rule } from 'ant-design-vue/es/form'
-import { doLogin } from '@/api/yonghukongzhiqi'
+import { doLogin } from '@/api/userController.ts'
 import { useLoginUserStore } from '@/stores/loginUser'
 
 // 定义组件事件

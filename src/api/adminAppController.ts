@@ -2,7 +2,7 @@
 /* eslint-disable */
 import request from '@/request'
 
-/** 获取应用详情 GET /App/admin/${param0} */
+/** 获取应用详情 GET /app/admin/${param0} */
 export async function adminGetInfo(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.adminGetInfoParams,
@@ -16,7 +16,7 @@ export async function adminGetInfo(
   })
 }
 
-/** 获取用户应用列表 GET /App/admin/list */
+/** 获取用户应用列表 GET /app/admin/list */
 export async function adminGetList1(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.adminGetList1Params,
@@ -33,7 +33,7 @@ export async function adminGetList1(
   })
 }
 
-/** 更新应用信息 POST /App/admin/update */
+/** 更新应用信息 POST /app/admin/update */
 export async function adminUpdate(body: API.AppUpdateAdminReqVo, options?: { [key: string]: any }) {
   return request<API.BaseResponseVoid>('/app/admin/update', {
     method: 'POST',

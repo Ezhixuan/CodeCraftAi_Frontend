@@ -262,7 +262,7 @@ import {
   adminAddBySize,
   adminDisable,
   adminGetList,
-} from '@/api/yonghukongzhiqi'
+} from '@/api/userController.ts'
 import UserAvatar from '@/components/User/Avatar/index.vue'
 
 // 搜索表单

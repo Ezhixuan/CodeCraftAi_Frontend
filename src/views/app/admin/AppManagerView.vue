@@ -238,7 +238,7 @@ import {
   adminGetList1,
   adminGetInfo,
   adminUpdate,
-} from '@/api/yingyongkongzhiqiguanliyuan'
+} from '@/api/adminAppController.ts'
 import type { TableColumnsType, TableProps, FormInstance } from 'ant-design-vue'
 
 // 搜索表单

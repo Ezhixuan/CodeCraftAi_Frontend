@@ -110,7 +110,7 @@ import {
   GoogleOutlined,
 } from '@ant-design/icons-vue'
 import type { Rule } from 'ant-design-vue/es/form'
-import { doRegister } from '@/api/yonghukongzhiqi'
+import { doRegister } from '@/api/userController.ts'
 
 // 定义组件事件
 const emit = defineEmits<{
