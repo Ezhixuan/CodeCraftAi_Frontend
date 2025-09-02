@@ -353,6 +353,7 @@ const app = ref<App>({
   isOwner: false,
   id: '',
 })
+
 const appList = {
   data: ref<API.AppInfoCommonResVo[]>([]),
   isLoading: ref(false),
@@ -372,6 +373,8 @@ const chat = {
   historyPageSize: ref(4),
   historyPageNum: ref(1),
   lastCreateTime: ref<string>(''),
+  firstLoad: ref(true),
+  historyTotal: ref(0),
 }
 
 const preview = {
@@ -390,7 +393,6 @@ const appStatus = reactive({
   previewStatus: '' as 'LOADING' | 'LOADED' | 'ERROR' | '',
   originalDirStatus: '' as 'LOADING' | 'LOADED' | 'ERROR' | '',
   loading: false,
-  error: '',
 })
 
 const isVisibleOfDrawer = ref(false)
@@ -403,8 +405,6 @@ const contentKey = ref(0)
 const route = useRoute()
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
-const currentPage = ref(1)
-const pageSize = ref(20)
 let scrollDebounceTimer: number | null = null
 const generatingTextIndex = ref(0)
 
@@ -449,7 +449,7 @@ const statusColor = computed(() => {
 const conversationStats = computed(() => {
   // 统计用户消息总数
   const userMessages = chat.messages.value.filter((m) => m.type === 'user')
-  const messageCount = userMessages.length
+  const messageCount = chat.historyTotal.value
 
   // 计算最近一次对话的响应时间
   let lastGenerationTime = null
@@ -485,7 +485,6 @@ const handleLogoMouseLeave = () => {
   isVisibleOfDrawer.value = false
 }
 
-// 使用VueUse的useInfiniteScroll优化应用列表加载
 useInfiniteScroll(appListRef, async () => {}, {
   distance: 100,
   canLoadMore: () => true,
@@ -495,13 +494,11 @@ useInfiniteScroll(
   messageListRef,
   async () => {
     if (chat.hasMoreHistory.value && !chat.isLoadingHistory.value) {
-      // 增加页码
-      chat.historyPageNum.value++
-      await getChatHistoryById(true, appId.value)
+      await getChatHistoryById(appId.value)
     }
   },
   {
-    distance: 5,
+    distance: 100,
     direction: 'top',
     canLoadMore: () => chat.hasMoreHistory.value && !chat.isLoadingHistory.value,
   },
@@ -541,10 +538,8 @@ onMounted(async () => {
  * 对应用信息以及部署信息进行初始化
  */
 const initByAppId = async (currentAppId: string) => {
-  console.log(currentAppId)
   await getAppInfoById(currentAppId)
   await getAppStatusById(currentAppId)
-  await getChatHistoryById(false, currentAppId)
 }
 
 /**
@@ -579,9 +574,8 @@ const getAppInfoById = async (currentAppId: string) => {
 const getAppStatusById = async (currentAppId?: string) => {
   const targetAppId = currentAppId || appId.value
   if (!targetAppId) return
+  appStatus.loading = true
   try {
-    appStatus.loading = true
-    appStatus.error = ''
     const response = await getAppStatus({ appId: targetAppId })
     if (response.data.data) {
       const statusData = response.data.data
@@ -597,14 +591,13 @@ const getAppStatusById = async (currentAppId?: string) => {
     }
   } catch (error) {
     console.error('获取应用状态失败:', error)
-    appStatus.error = '获取状态失败'
     message.error('获取应用状态失败')
   } finally {
     appStatus.loading = false
   }
 }
 
-const getChatHistoryById = async (isLoadMore: boolean, currentAppId?: string) => {
+const getChatHistoryById = async (currentAppId?: string) => {
   const targetAppId = currentAppId || appId.value
   if (!targetAppId) return
   chat.isLoadingHistory.value = true
@@ -627,11 +620,14 @@ const getChatHistoryById = async (isLoadMore: boolean, currentAppId?: string) =>
         timestamp: new Date(item.createTime || '').getTime(),
       }))
 
-      if (isLoadMore) {
+      if (chat.firstLoad.value) {
+        chat.messages.value = historyMessages
+        chat.firstLoad.value = false
+        chat.historyTotal.value = Number(response.data.data.totalRow)
+        scrollToBottom()
+      } else {
         // 不是首次则将获取的历史数据向头部插入
         chat.messages.value = [...historyMessages, ...chat.messages.value]
-      } else {
-        chat.messages.value = historyMessages
       }
 
       // 更新数据以便下次查询使用
@@ -644,6 +640,8 @@ const getChatHistoryById = async (isLoadMore: boolean, currentAppId?: string) =>
     }
   } catch (error) {
     console.error('获取聊天记录失败:', error)
+  } finally {
+    chat.isLoadingHistory.value = false
   }
 }
 
