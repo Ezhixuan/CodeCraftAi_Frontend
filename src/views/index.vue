@@ -213,15 +213,16 @@ const handleSubmit = async () => {
 /**
  * 处理应用卡片点击事件
  */
-const handleAppCardClick = (app: API.AppInfoCommonResVo) => {
+const handleAppCardClick = async (app: API.AppInfoCommonResVo) => {
   try {
-    router.push({
+    await router.replace({
       path: '/App/code-message',
       query: {
         appId: app.id,
         userId: loginUserStore.loginUser.id,
       },
     })
+    window.location.reload()
   } catch (error) {
     console.error('应用跳转失败', error)
   }
