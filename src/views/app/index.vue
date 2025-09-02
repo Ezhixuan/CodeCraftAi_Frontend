@@ -1,8 +1,9 @@
 <template>
   <div class="code-message-view" :key="navKey">
     <AppNavBar
-      v-if="appId"
+      v-if="appId && appInfo"
       :sys-app-info="appInfo"
+      :app-id="appId"
       :is-owner="isOwner"
       @logoMouseOver="handleLogoMouseOver"
     />
@@ -28,14 +29,14 @@
                 </div>
               </div>
               <div class="status-indicator">
-                <a-spin v-if="chat.isLoading.value" size="small" />
+                <a-spin v-if="chatLoading" size="small" />
                 <a-tag :color="statusColor">{{ statusText }}</a-tag>
               </div>
             </div>
 
             <div class="chat-container">
               <div class="message-list" ref="messageListRef">
-                <div v-if="chat.messages.value.length === 0" class="message ai-message">
+                <div v-if="messages.length === 0" class="message ai-message">
                   <div class="message-avatar">
                     <img src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
                   </div>
@@ -45,7 +46,7 @@
                 </div>
 
                 <div
-                  v-for="(message, index) in chat.messages.value"
+                  v-for="message in messages"
                   :key="message.id"
                   :class="['message', message.type === 'user' ? 'user-message' : 'ai-message']"
                 >
@@ -88,7 +89,7 @@
                   background-color="#000000"
                   :multiline="true"
                   :height="200"
-                  :disabled="chat.isLoading.value"
+                  :disabled="chatLoading"
                   @submit="sendMessage"
                 />
               </div>
@@ -103,19 +104,14 @@
               <div class="preview-actions">
                 <!-- 只有当originalDirStatus为LOADED时才显示按钮 -->
                 <template v-if="appStatus.originalDirStatus === 'LOADED'">
-                  <a-button
-                    v-if="preview.url"
-                    size="small"
-                    type="text"
-                    @click="openPreviewInNewTab"
-                  >
+                  <a-button v-if="previewUrl" size="small" type="text" @click="openPreviewInNewTab">
                     <template #icon><ExportOutlined /></template>
                     新窗口打开
                   </a-button>
                   <!-- 预览按钮 -->
                   <a-button
                     type="primary"
-                    :loading="preview.isLoading.value || appStatus.previewStatus === 'LOADING'"
+                    :loading="previewLoading || appStatus.previewStatus === 'LOADING'"
                     @click="handlePreviewClick"
                     :disabled="!isOwner"
                     size="small"
@@ -124,7 +120,7 @@
                     {{
                       appStatus.previewStatus === 'LOADING'
                         ? '预览中...'
-                        : preview.isLoading.value
+                        : previewLoading
                           ? '预览中...'
                           : '预览'
                     }}
@@ -164,7 +160,7 @@
             <div class="preview-content">
               <!-- 加载状态 -->
               <div
-                v-if="appStatus.previewStatus === 'LOADING' || preview.isLoading.value"
+                v-if="appStatus.previewStatus === 'LOADING' || previewLoading"
                 class="loading-container"
               >
                 <a-spin size="large">
@@ -172,7 +168,7 @@
                     <LoadingOutlined style="font-size: 24px" spin />
                   </template>
                 </a-spin>
-                <p class="loading-text">{{ preview.progressText.value || '正在生成预览...' }}</p>
+                <p class="loading-text">{{ progressText || '正在生成预览...' }}</p>
               </div>
 
               <!-- 错误状态 -->
@@ -186,13 +182,11 @@
 
               <!-- 预览iframe -->
               <div
-                v-else-if="
-                  preview.url.value && preview.preview.value && appStatus.previewStatus === 'LOADED'
-                "
+                v-else-if="previewUrl && previewState && appStatus.previewStatus === 'LOADED'"
                 class="iframe-container"
               >
                 <iframe
-                  :src="preview.url.value"
+                  :src="previewUrl"
                   frameborder="0"
                   width="100%"
                   height="100%"
@@ -217,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, reactive } from 'vue'
+import { computed, nextTick, onMounted, ref, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
@@ -233,68 +227,37 @@ import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownReader from '@/components/Markdown/index.vue'
 import Input from '@/components/Input/index.vue'
 import AppDrawer from '@/views/app/components/AppDrawer.vue'
-import { useLoginUserStore } from '@/stores/loginUser'
 import { getBaseUrl } from '@/config/env.ts'
 import DateUtil from '@/utils/DateUtil.ts'
-import { getAppInfo } from '@/api/appController.ts'
-import { getAppPreviewUrl, getAppStatus, putAppDeploy } from '@/api/appCoreController.ts'
-import { getChatHisList } from '@/api/chatHistoryController.ts'
+import { putAppDeploy } from '@/api/appCoreController.ts'
+import { useApp } from '@/views/app/composables/useApp'
+import { useChat } from '@/views/app/composables/useChat'
+import { usePreview } from '@/views/app/composables/usePreview'
 
-interface ChatMessage {
-  id: string
-  type: 'user' | 'ai'
-  content: string
-  timestamp: number
-  isLoading?: boolean
-}
-
-interface App {
-  id: string | undefined
-  data: API.AppInfoCommonResVo | undefined
-  isOwner: boolean
-  isLoading: boolean
-}
-
-// 统一的应用相关变量
-const app = ref<App>({
-  data: undefined,
-  isLoading: false,
-  isOwner: false,
-  id: '',
-})
-
-const chat = {
-  messages: ref<ChatMessage[]>([]),
-  currentMessageId: ref('-1'),
-  currentMessageIndex: ref(-1),
-  isLoading: ref(false),
-  // 分页相关
-  isLoadingHistory: ref(false),
-  hasMoreHistory: ref(true),
-  historyPageSize: ref(4),
-  historyPageNum: ref(1),
-  lastCreateTime: ref<string>(''),
-  firstLoad: ref(true),
-  historyTotal: ref(0),
-}
-
-const preview = {
-  url: ref(''),
-  isLoading: ref(false),
-  preview: ref(false),
-  progressText: ref(''),
-}
+// 使用 composables
+const { app, appStatus, getAppStatusById, initByAppId } = useApp()
+const {
+  messages,
+  isLoading: chatLoading,
+  isLoadingHistory,
+  hasMoreHistory,
+  historyPageNum,
+  historyTotal,
+  firstLoad,
+  generatingText,
+  getChatHistoryById,
+  buildMessage,
+} = useChat()
+const {
+  url: previewUrl,
+  isLoading: previewLoading,
+  preview: previewState,
+  progressText,
+  handlePreview,
+} = usePreview()
 
 // 下载状态
 const downloadLoading = ref(false)
-
-// 应用状态管理
-const appStatus = reactive({
-  deployStatus: '' as 'LOADING' | 'LOADED' | 'ERROR' | '',
-  previewStatus: '' as 'LOADING' | 'LOADED' | 'ERROR' | '',
-  originalDirStatus: '' as 'LOADING' | 'LOADED' | 'ERROR' | '',
-  loading: false,
-})
 
 const isVisibleOfDrawer = ref(false)
 const newMessage = ref('')
@@ -302,53 +265,71 @@ const newMessage = ref('')
 const messageListRef = ref<HTMLElement | null>(null)
 const navKey = ref('0')
 const contentKey = ref(0)
+const loadHistoryCount = ref(0)
 const route = useRoute()
 const router = useRouter()
-const loginUserStore = useLoginUserStore()
-const generatingTextIndex = ref(0)
 
 const welcomeMessage = `# 👋 欢迎使用 CodeCraftAI
 我是您的 AI 编程助手，可以帮助您快速生成、优化和调试代码。请在下方输入您的需求！`
-const generatingTexts = [
-  'AI 正在分析您的需求...',
-  'AI 正在设计应用架构...',
-  'AI 正在编写核心代码...',
-  'AI 正在优化代码结构...',
-]
 
 const appId = computed(() => {
-  return (route.params.appId as string) || app.value?.id
+  return (route.query.appId as string) || app.id
 })
 
 const appInfo = computed(() => {
-  return app.value?.data
+  return app.data
 })
 
 const isOwner = computed(() => {
-  return app.value?.isOwner || false
+  return app.isOwner || false
 })
-
-const generatingText = computed(
-  () => generatingTexts[generatingTextIndex.value % generatingTexts.length],
-)
 
 const statusText = computed(() => {
-  console.log(preview)
-  if (chat.isLoading.value) return '生成中'
-  if (preview.preview.value) return '可预览'
-  if (chat.messages.value.length === 0) return '等待输入'
+  console.log(previewState)
+  if (chatLoading.value) return '生成中'
+  if (appStatus.previewStatus === 'LOADED') return '可预览'
+  if (messages.value.length === 0) return '等待输入'
   return '已完成'
 })
+
 const statusColor = computed(() => {
-  if (chat.isLoading.value) return 'processing'
-  if (preview.preview.value) return 'success'
+  if (chatLoading.value) return 'processing'
+  if (appStatus.previewStatus === 'LOADED') return 'success'
   return 'default'
+})
+
+onMounted(async () => {
+  // 进入页面后初始化数据
+  if (!route.query.appId) {
+    message.error('该应用或许不存在')
+    await router.push('/')
+    return
+  }
+  const id = route.query.appId as string
+  await loadAppData(id)
+
+  const actionParam = Number(route.query.action)
+  if (actionParam === 1) {
+    const userMessage = route.query.userMessage as string
+    if (userMessage) {
+      const userMsg = buildMessage('user', userMessage, false)
+      messages.value.push(userMsg)
+      await startCodeGeneration(userMessage)
+      // 生成成功后移除URL中的action=1参数
+      await removeActionParam()
+    }
+  } else if (route.query.userMessage) {
+    // 如果有用户消息但action不为1，只添加消息不生成
+    const userMessage = route.query.userMessage as string
+    const userMsg = buildMessage('user', userMessage, false)
+    messages.value.push(userMsg)
+  }
 })
 
 const conversationStats = computed(() => {
   // 统计用户消息总数
-  const userMessages = chat.messages.value.filter((m) => m.type === 'user')
-  const messageCount = chat.historyTotal.value
+  const userMessages = messages.value.filter((m) => m.type === 'user')
+  const messageCount = historyTotal.value
 
   // 计算最近一次对话的响应时间
   let lastGenerationTime = null
@@ -358,7 +339,7 @@ const conversationStats = computed(() => {
     const lastUserMessage = userMessages[userMessages.length - 1]
 
     // 找到该用户消息之后的第一个AI回复
-    const subsequentAiMessage = chat.messages.value.find(
+    const subsequentAiMessage = messages.value.find(
       (m) => m.type === 'ai' && m.timestamp > lastUserMessage.timestamp && !m.isLoading,
     )
 
@@ -388,153 +369,15 @@ useInfiniteScroll(
   messageListRef,
   async () => {
     await getChatHistoryById(appId.value)
-    chat.historyPageNum.value += 1
+    historyPageNum.value += 1
   },
   {
-    distance: 10,
+    distance: 50,
     direction: 'top',
-    canLoadMore: () => chat.hasMoreHistory.value && !chat.isLoadingHistory.value,
+    canLoadMore: () =>
+      hasMoreHistory.value && !isLoadingHistory.value && loadHistoryCount.value === 1,
   },
 )
-
-onMounted(async () => {
-  try {
-    // 进入页面后初始化数据
-    if (!route.query.appId) {
-      message.error('该应用或许不存在')
-      await router.push('/')
-    }
-    const appId = route.query.appId as string
-    await initByAppId(appId)
-
-    const actionParam = Number(route.query.action)
-    if (actionParam === 1) {
-      const userMessage = route.query.userMessage as string
-      if (userMessage) {
-        const userMsg = buildMessage('user', userMessage, false)
-        chat.messages.value.push(userMsg)
-        await startCodeGeneration(userMessage)
-        // 生成成功后移除URL中的action=1参数
-        await removeActionParam()
-      }
-    } else if (route.query.userMessage) {
-      // 如果有用户消息但action不为1，只添加消息不生成
-      const userMessage = route.query.userMessage as string
-      const userMsg = buildMessage('user', userMessage, false)
-      chat.messages.value.push(userMsg)
-    }
-  } catch (error) {
-    message.error('页面加载失败')
-    await router.push('/')
-  }
-})
-
-/**
- * 核心初始化方法
- * 对应用信息以及部署信息进行初始化
- */
-const initByAppId = async (currentAppId: string) => {
-  await getAppInfoById(currentAppId)
-  await getAppStatusById(currentAppId)
-}
-
-/**
- * 获取应用信息
- * @param currentAppId 应用id
- */
-const getAppInfoById = async (currentAppId: string) => {
-  app.value.isLoading = true
-  try {
-    const response = await getAppInfo({ id: currentAppId })
-    if (response.data.data) {
-      const appInfo = response.data.data
-      app.value = {
-        id: appInfo.id,
-        data: appInfo,
-        isOwner: appInfo.userId === loginUserStore.loginUser.id,
-        isLoading: false,
-      }
-    }
-  } catch (error) {
-    console.error('获取应用信息失败:', error)
-    message.error('获取应用信息失败')
-  } finally {
-    app.value.isLoading = false
-  }
-}
-
-/**
- * 获取应用状态
- * @param currentAppId 应用id
- */
-const getAppStatusById = async (currentAppId?: string) => {
-  const targetAppId = currentAppId || appId.value
-  if (!targetAppId) return
-  appStatus.loading = true
-  try {
-    const response = await getAppStatus({ appId: targetAppId })
-    if (response.data.data) {
-      const statusData = response.data.data
-      appStatus.deployStatus = statusData.deployStatus || ''
-      appStatus.previewStatus = statusData.previewStatus || ''
-      appStatus.originalDirStatus = statusData.originalDirStatus || ''
-
-      // 更新预览状态
-      preview.preview.value = statusData.previewStatus === 'LOADED'
-      if (preview.preview.value) {
-        await handlePreview(targetAppId, false)
-      }
-    }
-  } catch (error) {
-    console.error('获取应用状态失败:', error)
-    message.error('获取应用状态失败')
-  } finally {
-    appStatus.loading = false
-  }
-}
-
-const getChatHistoryById = async (currentAppId?: string) => {
-  const targetAppId = currentAppId || appId.value
-  if (!targetAppId) return
-  console.log('num', chat.historyPageNum.value)
-  chat.isLoadingHistory.value = true
-  try {
-    const response = await getChatHisList({
-      reqVo: {
-        pageNo: chat.historyPageNum.value,
-        pageSize: chat.historyPageSize.value,
-        appId: targetAppId,
-        orderBy: 'desc',
-      },
-    })
-    if (response.data.data?.list) {
-      const chatHisList = response.data.data.list
-      const historyMessages: ChatMessage[] = chatHisList.map((item: API.ChatInfoResVo) => ({
-        id: item.id || generateId(),
-        type: item.messageType === 'user' ? 'user' : 'ai',
-        content: item.message || '',
-        timestamp: new Date(item.createTime || '').getTime(),
-      }))
-
-      if (chat.firstLoad.value) {
-        chat.messages.value = historyMessages
-        chat.firstLoad.value = false
-        chat.historyTotal.value = Number(response.data.data.totalRow)
-        scrollToBottom()
-      } else {
-        // 不是首次则将获取的历史数据向头部插入
-        chat.messages.value = [...historyMessages, ...chat.messages.value]
-      }
-
-      // 更新数据以便下次查询使用
-      chat.hasMoreHistory.value = chatHisList.length >= chat.historyPageSize.value
-    }
-  } catch (error) {
-    console.error('获取聊天记录失败:', error)
-  } finally {
-    chat.isLoadingHistory.value = false
-  }
-}
 
 /**
  * 移除URL中的action参数
@@ -551,6 +394,7 @@ const removeActionParam = async () => {
     })
   } catch (error) {
     console.error('移除URL参数失败:', error)
+    message.error(`移除URL参数失败: ${error instanceof Error ? error.message : '未知错误'}`)
   }
 }
 
@@ -576,7 +420,7 @@ const startCodeGeneration = async (messageContent: string) => {
       eventSource.close()
       eventSource = null
     }
-    chat.isLoading.value = false
+    chatLoading.value = false
   }
 
   // 统一错误处理
@@ -585,7 +429,7 @@ const startCodeGeneration = async (messageContent: string) => {
 
     streamCompleted = true
     cleanupResources()
-    handleGenerationError(errorMessage, chat.currentMessageIndex.value)
+    handleGenerationError(errorMessage)
   }
 
   // 成功完成处理
@@ -608,13 +452,11 @@ const startCodeGeneration = async (messageContent: string) => {
   }
 
   // 初始化UI状态
-  preview.preview.value = false
+  previewState.value = false
 
   const aiMessage = buildMessage('ai', '', true)
-  chat.messages.value.push(aiMessage)
-  chat.currentMessageId.value = aiMessage.id
-  chat.isLoading.value = true
-  chat.currentMessageIndex.value = chat.messages.value.length - 1
+  messages.value.push(aiMessage)
+  chatLoading.value = true
 
   await nextTick()
   scrollToBottom()
@@ -638,7 +480,7 @@ const startCodeGeneration = async (messageContent: string) => {
 
         if (content !== undefined && content !== null) {
           fullContent += content
-          const currentMessage = chat.messages.value[chat.currentMessageIndex.value]
+          const currentMessage = messages.value[messages.value.length - 1]
           if (currentMessage) {
             currentMessage.content = fullContent
             currentMessage.isLoading = false
@@ -657,7 +499,7 @@ const startCodeGeneration = async (messageContent: string) => {
 
       // 获取最新状态
       if (appId.value) {
-        await getAppStatus({ appId: appId.value })
+        await getAppStatusById(appId.value)
       }
 
       handleSuccess()
@@ -688,30 +530,16 @@ const startCodeGeneration = async (messageContent: string) => {
   }
 }
 
-const handleGenerationError = (message: string, messageIndex: number) => {
-  // 实现错误处理逻辑，比如更新消息内容显示错误
-  if (chat.messages.value[messageIndex]) {
-    chat.messages.value[messageIndex].content = message
-    chat.messages.value[messageIndex].isLoading = false
+const handleGenerationError = (errorMessage: string) => {
+  // 实现错误处理逻辑，更新消息内容显示错误
+  const lastMessage = messages.value[messages.value.length - 1]
+  if (lastMessage) {
+    lastMessage.content = errorMessage
+    lastMessage.isLoading = false
+    lastMessage.error = errorMessage
   }
-  chat.isLoading.value = false
+  chatLoading.value = false
   scrollToBottom()
-}
-
-/**
- * 构建消息
- * @param type 消息类型
- * @param content 消息内容
- * @param isLoading 是否正在加载
- */
-const buildMessage = (type: 'user' | 'ai', content: string, isLoading: boolean): ChatMessage => {
-  return {
-    id: generateId(),
-    type,
-    content,
-    timestamp: Date.now(),
-    isLoading: isLoading,
-  }
 }
 
 /**
@@ -719,27 +547,9 @@ const buildMessage = (type: 'user' | 'ai', content: string, isLoading: boolean):
  */
 const handlePreviewClick = async () => {
   if (!appId.value) return
-  preview.isLoading.value = true
   await handlePreview(appId.value, true)
-}
-
-const handlePreview = async (previewAppId: string, reBuild: boolean) => {
-  preview.isLoading.value = true
-  try {
-    const response = await getAppPreviewUrl({ appId: previewAppId, reBuild: reBuild })
-    if (response.data.data) {
-      preview.url.value = response.data.data
-      preview.preview.value = true
-      message.success('预览生成成功！')
-      if (reBuild) {
-        await getAppStatusById()
-      }
-    }
-  } catch (error) {
-    console.error('预览生成失败:', error)
-  } finally {
-    preview.isLoading.value = false
-  }
+  // 更新应用状态
+  await getAppStatusById(appId.value)
 }
 
 /**
@@ -771,20 +581,13 @@ const handleDeploy = async () => {
     await putAppDeploy({ appId: appId.value })
 
     // 获取最新状态
-    await getAppStatusById()
+    await getAppStatusById(appId.value)
   } catch (error) {
     console.error('部署失败:', error)
-    message.error('部署失败，请重试')
+    message.error(`部署失败: ${error instanceof Error ? error.message : '请重试'}`)
   } finally {
     appStatus.loading = false
   }
-}
-
-/**
- * 生成消息 id
- */
-const generateId = () => {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2)
 }
 
 /**
@@ -806,17 +609,11 @@ const handleAppClick = async (app: API.AppInfoCommonResVo) => {
 
   try {
     isVisibleOfDrawer.value = false
-
     await router.push('/App/code-message?appId=' + app.id)
-    await initByAppId(app.id)
-    chat.firstLoad.value = true
-    navKey.value += 1
-    contentKey.value += 1
-    chat.historyPageNum.value = 1
-    await getChatHistoryById(app.id)
+    // 应用切换由 watch(appId) 处理，确保与无限滚动协调
   } catch (error) {
     console.error('应用跳转失败', error)
-    message.error('应用跳转失败')
+    message.error(`应用跳转失败: ${error instanceof Error ? error.message : '未知错误'}`)
   }
 }
 
@@ -833,18 +630,13 @@ const handleLogin = () => {
  */
 const sendMessage = async () => {
   const content = newMessage.value.trim()
-  if (!content || chat.isLoading.value) return
+  if (!content || chatLoading.value) return
 
-  chat.messages.value.push({
-    id: generateId(),
-    type: 'user',
-    content,
-    timestamp: Date.now(),
-  })
+  messages.value.push(buildMessage('user', content, false))
 
   newMessage.value = ''
-  preview.url.value = ''
-  preview.preview.value = false
+  previewUrl.value = ''
+  previewState.value = false
   await startCodeGeneration(content)
 }
 
@@ -856,9 +648,9 @@ const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
     message.success('代码已复制')
-  } catch (err) {
-    console.error(err)
-    message.error('复制失败')
+  } catch (error) {
+    console.error('复制失败:', error)
+    message.error(`复制失败: ${error instanceof Error ? error.message : '未知错误'}`)
   }
 }
 
@@ -866,8 +658,8 @@ const copyToClipboard = async (text: string) => {
  * 打开新窗口预览
  */
 const openPreviewInNewTab = () => {
-  if (preview.url.value) {
-    window.open(preview.url.value, '_blank')
+  if (previewUrl.value) {
+    window.open(previewUrl.value, '_blank')
   }
 }
 
@@ -928,11 +720,45 @@ const handleDownloadClick = async () => {
     message.success('代码下载成功')
   } catch (error) {
     console.error('下载失败:', error)
-    message.error('下载失败，请稍后重试')
+    message.error(`下载失败: ${error instanceof Error ? error.message : '请稍后重试'}`)
   } finally {
     downloadLoading.value = false
   }
 }
+/**
+ * 加载应用数据（历史记录和应用信息）
+ */
+const loadAppData = async (appId: string) => {
+  firstLoad.value = true
+  historyPageNum.value = 1
+  loadHistoryCount.value = 0
+  await initByAppId(appId)
+  await getChatHistoryById(appId)
+  navKey.value += 1
+  contentKey.value += 1
+  scrollToBottom()
+  // 等待 50ms
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  loadHistoryCount.value += 1
+}
+
+// 监听 appId 变化，处理应用切换
+watch(appId, async (newAppId, oldAppId) => {
+  if (newAppId && newAppId !== oldAppId) {
+    await loadAppData(newAppId)
+  }
+})
+
+// 添加组件卸载时的清理逻辑
+onUnmounted(() => {
+  // 清理可能的异步操作和事件监听器
+  if (chatLoading.value) {
+    chatLoading.value = false
+  }
+  if (previewLoading.value) {
+    previewLoading.value = false
+  }
+})
 </script>
 
 <style scoped>
@@ -1066,9 +892,6 @@ const handleDownloadClick = async () => {
   max-width: 100%;
 }
 
-.user-message {
-  flex-direction: row-reverse;
-}
 .ai-message {
   flex-direction: row;
 }
@@ -1159,45 +982,6 @@ const handleDownloadClick = async () => {
   background: #f8f9fa;
 }
 
-.preview-iframe-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-.iframe-loading {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
-  z-index: 10;
-}
-
-.preview-iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-  background: white;
-  transition: opacity 0.3s ease;
-}
-
-.deploying-placeholder,
-.preview-empty {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 32px;
-  color: #666;
-}
-
 .deploying-placeholder h4,
 .preview-empty h4 {
   margin: 12px 0 8px 0;
@@ -1281,145 +1065,10 @@ const handleDownloadClick = async () => {
   overflow: hidden;
 }
 
-/* Drawer Styles */
-.drawer-content {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-}
-
-.drawer-header {
-  margin-bottom: 16px;
-}
-
-.drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  margin-bottom: 16px;
-}
-
 .app-list-section h4 {
   margin-bottom: 12px;
   color: #1f2937;
   font-weight: 600;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 24px 0;
-  color: #6b7280;
-}
-
-.empty-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.app-item {
-  cursor: pointer;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  transition: all 0.2s ease;
-}
-
-.app-item:hover {
-  background-color: #f3f4f6;
-}
-
-.app-title {
-  font-weight: 500;
-  color: #1f2937;
-  font-size: 14px;
-}
-
-.app-time {
-  color: #6b7280;
-  font-size: 12px;
-}
-
-/* 加载更多历史消息样式 */
-.load-more-section {
-  padding: 12px 0;
-  margin-bottom: 16px;
-}
-
-.load-more-btn {
-  border-style: dashed;
-  border-color: #d9d9d9;
-  color: #666;
-  font-size: 14px;
-  height: 36px;
-}
-
-.load-more-btn:hover {
-  border-color: #40a9ff;
-  color: #40a9ff;
-}
-
-.loading-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px;
-  color: #666;
-  font-size: 14px;
-}
-
-/* 加载更多指示器样式 */
-.load-more-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  color: #666;
-  font-size: 14px;
-
-  .anticon {
-    margin-right: 8px;
-  }
-}
-
-/* 没有更多数据指示器样式 */
-.no-more-indicator {
-  text-align: center;
-  padding: 16px;
-  color: #999;
-  font-size: 14px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.drawer-footer {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 16px;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-details {
-  flex: 1;
-}
-
-.user-name {
-  font-weight: 500;
-  color: #1f2937;
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.user-role {
-  color: #6b7280;
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-.login-prompt {
-  text-align: center;
 }
 
 /* Responsive Design */
