@@ -346,14 +346,8 @@ import {
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownReader from '@/components/Markdown/index.vue'
 import Input from '@/components/Input/index.vue'
-import {
-  getInfo,
-  getList,
-  doPreview,
-  doDeploy,
-  getStatus,
-  doDownload,
-} from '@/api/appController.ts'
+import { getInfo, getList } from '@/api/appController.ts'
+import { doDeploy, doPreview } from '@/api/appCoreController.ts'
 import { list1 } from '@/api/chatHistoryController.ts'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { getBaseUrl } from '@/config/env.ts'

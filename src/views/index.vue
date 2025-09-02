@@ -86,7 +86,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { doGenerate, getFeaturedList, getList } from '@/api/appController.ts'
+import { getFeaturedList, getList } from '@/api/appController.ts'
+import { doGenerate } from '@/api/appCoreController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import router from '@/router'
 import Input from '@/components/Input/index.vue'

@@ -7,14 +7,6 @@ declare namespace API {
     disableId: string
   }
 
-  type adminGetInfoParams = {
-    id: string
-  }
-
-  type adminGetList1Params = {
-    queryReqVo: AppQueryReqVo
-  }
-
   type adminGetListParams = {
     queryReqVo: UserQueryReqVo
   }
@@ -220,6 +212,10 @@ declare namespace API {
     endTime?: string
   }
 
+  type delete1Params = {
+    id: string
+  }
+
   type deleteUsingDELETEParams = {
     id: string
   }
@@ -242,8 +238,16 @@ declare namespace API {
     appId: string
   }
 
+  type getInfo1Params = {
+    id: string
+  }
+
   type getInfoParams = {
     id: string
+  }
+
+  type getList1Params = {
+    queryReqVo: AppQueryReqVo
   }
 
   type getListParams = {

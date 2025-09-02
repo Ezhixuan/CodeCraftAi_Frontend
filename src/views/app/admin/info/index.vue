@@ -238,7 +238,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import { SearchOutlined, ReloadOutlined, FileImageOutlined } from '@ant-design/icons-vue'
-import { adminGetList1, adminGetInfo, adminUpdate } from '@/api/adminAppController.ts'
+import { getInfo1, getList1, update1 } from '@/api/adminAppController.ts'
 import type { TableColumnsType, TableProps, FormInstance } from 'ant-design-vue'
 import { useEnumStore } from '@/stores/enum.ts'
 import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
@@ -366,7 +366,7 @@ const getCodeGenTypes = async () => {
 const getAppList = async () => {
   try {
     loading.value = true
-    const res = await adminGetList1({
+    const res = await getList1({
       queryReqVo: searchForm,
     })
 
@@ -420,7 +420,7 @@ const handleTableChange: TableProps['onChange'] = (pag) => {
  */
 const viewApp = async (app: API.AppInfoAdminResVo) => {
   try {
-    const res = await adminGetInfo({ id: app.id! })
+    const res = await getInfo1({ id: app.id! })
     if (res.data?.data) {
       currentApp.value = res.data.data
       appDetailVisible.value = true
@@ -452,10 +452,10 @@ const handleUpdateApp = async () => {
     await editFormRef.value?.validate()
     updateLoading.value = true
 
-    await adminUpdate(editForm)
+    await update1(editForm)
     message.success('应用信息更新成功')
     editAppVisible.value = false
-    getAppList() // 刷新列表
+    await getAppList() // 刷新列表
   } catch (error) {
     console.error('更新应用信息失败:', error)
   } finally {
