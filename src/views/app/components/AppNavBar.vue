@@ -67,7 +67,9 @@
                   </div>
                   <div v-if="appInfo.userInfo" class="info-item">
                     <span class="label">创建者：</span>
-                    <span class="value">{{ appInfo.userInfo.name || appInfo.userInfo.account }}</span>
+                    <span class="value">{{
+                      appInfo.userInfo.name || appInfo.userInfo.account
+                    }}</span>
                   </div>
                   <div v-if="appInfo.codeGenType" class="info-item">
                     <span class="label">代码类型：</span>
@@ -93,7 +95,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import { getInfo, update } from '@/api/yingyongkongzhiqi'
+import { getAppInfo, putAppUpdate } from '@/api/appController.ts'
 import { message } from 'ant-design-vue'
 import {
   InfoCircleOutlined,
@@ -101,7 +103,7 @@ import {
   Html5Outlined,
   NodeIndexOutlined,
   FileOutlined,
-  BugOutlined
+  BugOutlined,
 } from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
 import { useLoginUserStore } from '@/stores/loginUser'
@@ -134,7 +136,7 @@ onMounted(async () => {
       appInfo.value = props.sysAppInfo
     } else if (props.appId) {
       try {
-        const response = await getInfo({ id: props.appId })
+        const response = await getAppInfo({ id: props.appId })
         if (response.data.data) {
           appInfo.value = response.data.data
         }
@@ -177,7 +179,7 @@ const saveAppName = async () => {
       id: props.appId!,
       name: editingName.value.trim(),
     }
-    await update(updateReq)
+    await putAppUpdate(updateReq)
     if (appInfo.value) {
       appInfo.value.name = editingName.value.trim()
     }
@@ -207,11 +209,11 @@ const formatDate = (dateStr?: string) => {
 const formatCodeGenType = (codeGenType?: string) => {
   if (!codeGenType) return '-'
   const typeMap: Record<string, string> = {
-    'vue_project': 'Vue项目',
-    'multi_file': '多文件项目',
-    'single_file': '单文件项目',
-    'react_project': 'React项目',
-    'html_project': 'HTML项目'
+    vue_project: 'Vue项目',
+    multi_file: '多文件项目',
+    single_file: '单文件项目',
+    react_project: 'React项目',
+    html_project: 'HTML项目',
   }
   return typeMap[codeGenType] || codeGenType
 }
@@ -226,63 +228,65 @@ const getCodeGenTypeConfig = (codeGenType?: string) => {
     return {
       color: 'default',
       icon: CodeOutlined,
-      label: '未知类型'
+      label: '未知类型',
     }
   }
 
   const configMap: Record<string, { color: string; icon: typeof CodeOutlined; label: string }> = {
-    'vue_project': {
+    vue_project: {
       color: 'green',
       icon: CodeOutlined,
-      label: 'Vue'
+      label: 'Vue',
     },
-    'react_project': {
+    react_project: {
       color: 'blue',
       icon: CodeOutlined,
-      label: 'React'
+      label: 'React',
     },
-    'angular_project': {
+    angular_project: {
       color: 'red',
       icon: CodeOutlined,
-      label: 'Angular'
+      label: 'Angular',
     },
-    'html': {
+    html: {
       color: 'orange',
       icon: Html5Outlined,
-      label: 'HTML'
+      label: 'HTML',
     },
-    'node_project': {
+    node_project: {
       color: 'lime',
       icon: NodeIndexOutlined,
-      label: 'Node.js'
+      label: 'Node.js',
     },
-    'python_project': {
+    python_project: {
       color: 'purple',
       icon: FileOutlined,
-      label: 'Python'
+      label: 'Python',
     },
-    'java_project': {
+    java_project: {
       color: 'volcano',
       icon: BugOutlined,
-      label: 'Java'
+      label: 'Java',
     },
-    'multi_file': {
+    multi_file: {
       color: 'cyan',
       icon: CodeOutlined,
-      label: '多文件'
+      label: '多文件',
     },
-    'single_file': {
+    single_file: {
       color: 'geekblue',
       icon: CodeOutlined,
-      label: '单文件'
-    }
+      label: '单文件',
+    },
   }
 
-  return configMap[codeGenType] || {
-    color: 'default',
-    icon: CodeOutlined,
-    label: codeGenType
-  }
+  return (
+    configMap[codeGenType] || {
+      color: 'default',
+      icon: CodeOutlined,
+      label: codeGenType,
+    }
+  )
 }
 
 const editApp = () => {

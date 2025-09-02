@@ -3,9 +3,9 @@
 import request from '@/request'
 
 /** 应用部署 PUT /app/deploy/${param0} */
-export async function doDeploy(
+export async function putAppDeploy(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.doDeployParams,
+  params: API.putAppDeployParams,
   options?: { [key: string]: any }
 ) {
   const { appId: param0, ...queryParams } = params
@@ -17,9 +17,9 @@ export async function doDeploy(
 }
 
 /** 应用下载 GET /app/download/${param0} */
-export async function doDownload(
+export async function getAppDownloadZip(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.doDownloadParams,
+  params: API.getAppDownloadZipParams,
   options?: { [key: string]: any }
 ) {
   const { appId: param0, ...queryParams } = params
@@ -31,7 +31,7 @@ export async function doDownload(
 }
 
 /** 通过用户输入生成应用记录 POST /app/generate */
-export async function doGenerate(body: API.AppGenerateReqVo, options?: { [key: string]: any }) {
+export async function postAppInfo(body: API.AppGenerateReqVo, options?: { [key: string]: any }) {
   return request<API.BaseResponseLong>('/app/generate', {
     method: 'POST',
     headers: {
@@ -43,9 +43,9 @@ export async function doGenerate(body: API.AppGenerateReqVo, options?: { [key: s
 }
 
 /** 代码生成 GET /app/generate/code */
-export async function generateCode(
+export async function sseAppGenerateCode(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.generateCodeParams,
+  params: API.sseAppGenerateCodeParams,
   options?: { [key: string]: any }
 ) {
   return request<API.ServerSentEventString[]>('/app/generate/code', {
@@ -58,9 +58,9 @@ export async function generateCode(
 }
 
 /** 应用预览 GET /app/preview/${param0} */
-export async function doPreview(
+export async function getAppPreviewUrl(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.doPreviewParams,
+  params: API.getAppPreviewUrlParams,
   options?: { [key: string]: any }
 ) {
   const { appId: param0, ...queryParams } = params
@@ -74,9 +74,9 @@ export async function doPreview(
 }
 
 /** 获取应用状态 GET /app/status/${param0} */
-export async function getStatus(
+export async function getAppStatus(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getStatusParams,
+  params: API.getAppStatusParams,
   options?: { [key: string]: any }
 ) {
   const { appId: param0, ...queryParams } = params

@@ -15,10 +15,6 @@ declare namespace API {
     id: string
   }
 
-  type adminListParams = {
-    reqVo: ChatQueryReqVo
-  }
-
   type AppGenerateReqVo = {
     /** 初始化提示 */
     initPrompt: string
@@ -201,7 +197,7 @@ declare namespace API {
     /** 对话 id */
     id?: string
     /** 应用ID */
-    appId: string
+    appId?: string
     /** 用户 id */
     userId?: string
     /** 消息类型 */
@@ -212,50 +208,64 @@ declare namespace API {
     endTime?: string
   }
 
-  type delete1Params = {
+  type ChatUserQueryReqVo = {
+    /** 页码，从 1 开始 */
+    pageNo: number
+    /** 每页条数，最大值为 100 */
+    pageSize: number
+    /** 排序方式 */
+    orderBy?: string
+    /** 应用ID */
+    appId: string
+    /** 创建时间 */
+    startTime?: string
+    /** 结束时间 */
+    endTime?: string
+  }
+
+  type delAppParams = {
     id: string
   }
 
-  type deleteUsingDELETEParams = {
+  type delChatHisParams = {
     id: string
   }
 
-  type doDeployParams = {
+  type getAppDownloadZipParams = {
     appId: string
   }
 
-  type doDownloadParams = {
-    appId: string
+  type getAppInfoAdminParams = {
+    id: string
   }
 
-  type doPreviewParams = {
+  type getAppInfoParams = {
+    id: string
+  }
+
+  type getAppListAdminParams = {
+    queryReqVo: AppQueryReqVo
+  }
+
+  type getAppListParams = {
+    queryReqVo: AppQueryReqVo
+  }
+
+  type getAppPreviewUrlParams = {
     appId: string
     reBuild: boolean
   }
 
-  type generateCodeParams = {
-    message: string
+  type getAppStatusParams = {
     appId: string
   }
 
-  type getInfo1Params = {
-    id: string
+  type getChatHisListAdminParams = {
+    reqVo: ChatQueryReqVo
   }
 
-  type getInfoParams = {
-    id: string
-  }
-
-  type getList1Params = {
-    queryReqVo: AppQueryReqVo
-  }
-
-  type getListParams = {
-    queryReqVo: AppQueryReqVo
-  }
-
-  type getStatusParams = {
-    appId: string
+  type getChatHisListParams = {
+    reqVo: ChatUserQueryReqVo
   }
 
   type getUserInfoByIdParams = {
@@ -267,10 +277,6 @@ declare namespace API {
     key?: string
     /** 枚举 value */
     value?: string
-  }
-
-  type list1Params = {
-    reqVo: ChatQueryReqVo
   }
 
   type PageResponseAppInfoAdminResVo = {
@@ -357,7 +363,16 @@ declare namespace API {
     totalPage?: string
   }
 
+  type putAppDeployParams = {
+    appId: string
+  }
+
   type ServerSentEventString = true
+
+  type sseAppGenerateCodeParams = {
+    message: string
+    appId: string
+  }
 
   type UserAddReqVo = {
     /** 用户账号 */

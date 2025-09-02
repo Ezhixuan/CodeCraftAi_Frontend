@@ -3,9 +3,9 @@
 import request from '@/request'
 
 /** 删除对话记录 DELETE /chat/history/${param0} */
-export async function deleteUsingDelete(
+export async function delChatHis(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.deleteUsingDELETEParams,
+  params: API.delChatHisParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params
@@ -16,27 +16,10 @@ export async function deleteUsingDelete(
   })
 }
 
-/** 获取对话历史列表 (管理员) GET /chat/history/admin/list */
-export async function adminList(
-  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.adminListParams,
-  options?: { [key: string]: any }
-) {
-  return request<API.PageResponseChatInfoResVo>('/chat/history/admin/list', {
-    method: 'GET',
-    params: {
-      ...params,
-      reqVo: undefined,
-      ...params['reqVo'],
-    },
-    ...(options || {}),
-  })
-}
-
 /** 获取对话历史列表 GET /chat/history/list */
-export async function list1(
+export async function getChatHisList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.list1Params,
+  params: API.getChatHisListParams,
   options?: { [key: string]: any }
 ) {
   return request<API.PageResponseChatInfoResVo>('/chat/history/list', {

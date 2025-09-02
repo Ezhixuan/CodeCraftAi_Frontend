@@ -27,7 +27,7 @@
           </div>
 
           <!-- 中间区域：应用列表 -->
-          <div class="drawer-body" @scroll="handleAppListScroll">
+          <div class="drawer-body" ref="appListRef">
             <div class="app-list-section">
               <h4>我的应用</h4>
               <a-spin :spinning="appList.isLoading.value">
@@ -120,30 +120,7 @@
             </div>
 
             <div class="chat-container">
-              <div class="message-list" ref="messageListRef" @scroll="handleChatScroll">
-                <!-- 加载更多按钮 -->
-                <div
-                  v-if="
-                    chat.hasMoreHistory.value &&
-                    chat.messages.value.length >= chat.historyPageSize.value
-                  "
-                  class="load-more-section"
-                >
-                  <a-button
-                    v-if="!chat.isLoadingHistory.value"
-                    type="dashed"
-                    block
-                    @click="loadChatHistory(true, appId)"
-                    class="load-more-btn"
-                  >
-                    <template #icon><ReloadOutlined /></template>
-                    加载更多历史消息
-                  </a-button>
-                  <div v-else class="loading-more">
-                    <a-spin size="small" />
-                    <span>加载中...</span>
-                  </div>
-                </div>
+              <div class="message-list" ref="messageListRef">
                 <div v-if="chat.messages.value.length === 0" class="message ai-message">
                   <div class="message-avatar">
                     <img src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
@@ -330,7 +307,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, reactive } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
@@ -343,15 +320,16 @@ import {
   ReloadOutlined,
   RocketOutlined,
 } from '@ant-design/icons-vue'
+import { useInfiniteScroll } from '@vueuse/core'
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownReader from '@/components/Markdown/index.vue'
 import Input from '@/components/Input/index.vue'
-import { getInfo, getList } from '@/api/appController.ts'
-import { doDeploy, doPreview } from '@/api/appCoreController.ts'
-import { list1 } from '@/api/chatHistoryController.ts'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { getBaseUrl } from '@/config/env.ts'
 import DateUtil from '@/utils/DateUtil.ts'
+import { getAppInfo } from '@/api/appController.ts'
+import { getAppPreviewUrl, getAppStatus, putAppDeploy } from '@/api/appCoreController.ts'
+import { getChatHisList } from '@/api/chatHistoryController.ts'
 
 interface ChatMessage {
   id: string
@@ -363,24 +341,24 @@ interface ChatMessage {
 
 interface App {
   id: string | undefined
-  data: API.AppInfoCommonResVo
+  data: API.AppInfoCommonResVo | undefined
   isOwner: boolean
   isLoading: boolean
 }
 
 // 统一的应用相关变量
-const app = ref<App>()
+const app = ref<App>({
+  data: undefined,
+  isLoading: false,
+  isOwner: false,
+  id: '',
+})
 const appList = {
   data: ref<API.AppInfoCommonResVo[]>([]),
   isLoading: ref(false),
-  isLoadingMore: ref(false),
   hasMore: ref(true),
-  currentHasMore: ref(true),
-  currentIndex: ref(''),
-  lastIndex: ref(''),
-  lastId: ref(''),
-  // 数据补全配置
-  minInitialSize: ref(20), // 最小初始数据量阈值
+  pageNo: ref(1),
+  pageSize: ref(20),
 }
 
 const chat = {
@@ -391,7 +369,8 @@ const chat = {
   // 分页相关
   isLoadingHistory: ref(false),
   hasMoreHistory: ref(true),
-  historyPageSize: ref(10),
+  historyPageSize: ref(4),
+  historyPageNum: ref(1),
   lastCreateTime: ref<string>(''),
 }
 
@@ -418,6 +397,7 @@ const isVisibleOfDrawer = ref(false)
 const newMessage = ref('')
 
 const messageListRef = ref<HTMLElement | null>(null)
+const appListRef = ref<HTMLElement | null>(null)
 const navKey = ref('0')
 const contentKey = ref(0)
 const route = useRoute()
@@ -426,7 +406,6 @@ const loginUserStore = useLoginUserStore()
 const currentPage = ref(1)
 const pageSize = ref(20)
 let scrollDebounceTimer: number | null = null
-const SCROLL_DEBOUNCE_DELAY = 300 // 防抖延迟时间（毫秒）
 const generatingTextIndex = ref(0)
 
 const welcomeMessage = `# 👋 欢迎使用 CodeCraftAI
@@ -439,7 +418,7 @@ const generatingTexts = [
 ]
 
 const appId = computed(() => {
-  return app.value?.id || (route.params.appId as string)
+  return (route.params.appId as string) || app.value?.id
 })
 
 const appInfo = computed(() => {
@@ -453,6 +432,7 @@ const isOwner = computed(() => {
 const generatingText = computed(
   () => generatingTexts[generatingTextIndex.value % generatingTexts.length],
 )
+
 const statusText = computed(() => {
   console.log(preview)
   if (chat.isLoading.value) return '生成中'
@@ -465,15 +445,25 @@ const statusColor = computed(() => {
   if (preview.preview.value) return 'success'
   return 'default'
 })
+
 const conversationStats = computed(() => {
+  // 统计用户消息总数
   const userMessages = chat.messages.value.filter((m) => m.type === 'user')
-  const lastUserMessage = userMessages.pop()
+  const messageCount = userMessages.length
+
+  // 计算最近一次对话的响应时间
   let lastGenerationTime = null
 
-  if (lastUserMessage) {
+  // 找到最近的用户消息
+  if (userMessages.length > 0) {
+    const lastUserMessage = userMessages[userMessages.length - 1]
+
+    // 找到该用户消息之后的第一个AI回复
     const subsequentAiMessage = chat.messages.value.find(
       (m) => m.type === 'ai' && m.timestamp > lastUserMessage.timestamp && !m.isLoading,
     )
+
+    // 计算响应时间（秒）
     if (subsequentAiMessage) {
       lastGenerationTime = Math.round(
         (subsequentAiMessage.timestamp - lastUserMessage.timestamp) / 1000,
@@ -482,21 +472,40 @@ const conversationStats = computed(() => {
   }
 
   return {
-    messageCount: userMessages.length + (lastUserMessage ? 1 : 0),
+    messageCount,
     lastGenerationTime,
   }
 })
 
 const handleLogoMouseOver = () => {
   isVisibleOfDrawer.value = true
-  if (loginUserStore.isLogin() && appList.data.value.length === 0) {
-    getAppList()
-  }
 }
 
 const handleLogoMouseLeave = () => {
   isVisibleOfDrawer.value = false
 }
+
+// 使用VueUse的useInfiniteScroll优化应用列表加载
+useInfiniteScroll(appListRef, async () => {}, {
+  distance: 100,
+  canLoadMore: () => true,
+})
+
+useInfiniteScroll(
+  messageListRef,
+  async () => {
+    if (chat.hasMoreHistory.value && !chat.isLoadingHistory.value) {
+      // 增加页码
+      chat.historyPageNum.value++
+      await getChatHistoryById(true, appId.value)
+    }
+  },
+  {
+    distance: 5,
+    direction: 'top',
+    canLoadMore: () => chat.hasMoreHistory.value && !chat.isLoadingHistory.value,
+  },
+)
 
 onMounted(async () => {
   // 进入页面后初始化数据
@@ -530,26 +539,22 @@ onMounted(async () => {
 /**
  * 核心初始化方法
  * 对应用信息以及部署信息进行初始化
- * @param currentAppId 应用id
  */
 const initByAppId = async (currentAppId: string) => {
   console.log(currentAppId)
-  await getAppInfo(currentAppId)
-  await loadChatHistory(false, currentAppId)
-  await getAppStatus(currentAppId)
+  await getAppInfoById(currentAppId)
+  await getAppStatusById(currentAppId)
+  await getChatHistoryById(false, currentAppId)
 }
 
 /**
  * 获取应用信息
  * @param currentAppId 应用id
  */
-const getAppInfo = async (currentAppId: string) => {
-  if (!currentAppId) {
-    message.error('appId 不存在')
-    return
-  }
+const getAppInfoById = async (currentAppId: string) => {
+  app.value.isLoading = true
   try {
-    const response = await getInfo({ id: currentAppId })
+    const response = await getAppInfo({ id: currentAppId })
     if (response.data.data) {
       const appInfo = response.data.data
       app.value = {
@@ -562,6 +567,8 @@ const getAppInfo = async (currentAppId: string) => {
   } catch (error) {
     console.error('获取应用信息失败:', error)
     message.error('获取应用信息失败')
+  } finally {
+    app.value.isLoading = false
   }
 }
 
@@ -569,13 +576,13 @@ const getAppInfo = async (currentAppId: string) => {
  * 获取应用状态
  * @param currentAppId 应用id
  */
-const getAppStatus = async (currentAppId?: string) => {
+const getAppStatusById = async (currentAppId?: string) => {
   const targetAppId = currentAppId || appId.value
   if (!targetAppId) return
   try {
     appStatus.loading = true
     appStatus.error = ''
-    const response = await getStatus({ appId: targetAppId })
+    const response = await getAppStatus({ appId: targetAppId })
     if (response.data.data) {
       const statusData = response.data.data
       appStatus.deployStatus = statusData.deployStatus || ''
@@ -585,7 +592,7 @@ const getAppStatus = async (currentAppId?: string) => {
       // 更新预览状态
       preview.preview.value = statusData.previewStatus === 'LOADED'
       if (preview.preview.value) {
-        preview.url.value = getPreviewUrl()
+        await handlePreview(targetAppId, false)
       }
     }
   } catch (error) {
@@ -597,50 +604,23 @@ const getAppStatus = async (currentAppId?: string) => {
   }
 }
 
-/**
- * 加载对话历史
- * @param isLoadMore 是否为加载更多模式
- * @param currentAppId
- */
-const loadChatHistory = async (isLoadMore = false, currentAppId: string) => {
-  console.log('history', currentAppId)
-  if (!currentAppId) return
-
-  console.log(currentAppId)
-  if (!isLoadMore) {
-    // 重置状态
-    chat.isLoadingHistory.value = false
-    chat.hasMoreHistory.value = true
-  }
-  console.log('history', chat.isLoadingHistory.value || (!isLoadMore && !chat.hasMoreHistory.value))
-
-  // 防止重复加载
-  if (chat.isLoadingHistory.value || (!isLoadMore && !chat.hasMoreHistory.value)) {
-    return
-  }
-
+const getChatHistoryById = async (isLoadMore: boolean, currentAppId?: string) => {
+  const targetAppId = currentAppId || appId.value
+  if (!targetAppId) return
+  chat.isLoadingHistory.value = true
   try {
-    chat.isLoadingHistory.value = true
-
-    const queryParams: API.ChatQueryReqVo = {
-      pageNo: 1,
-      pageSize: chat.historyPageSize.value,
-      appId: currentAppId,
-      orderBy: 'asc',
-    }
-
-    // 如果是加载更多，添加时间游标
-    if (isLoadMore && chat.lastCreateTime.value) {
-      queryParams.endTime = DateUtil.formatDate(chat.lastCreateTime.value)
-    }
-
-    const response = await list1({ reqVo: queryParams })
-
+    const response = await getChatHisList({
+      reqVo: {
+        pageNo: chat.historyPageNum.value,
+        pageSize: chat.historyPageSize.value,
+        appId: targetAppId,
+        endTime: chat.lastCreateTime.value || DateUtil.getCurrentFormatted(),
+        orderBy: 'desc',
+      },
+    })
     if (response.data.data?.list) {
-      const historyList = response.data.data.list
-
-      // 转换API数据为ChatMessage格式
-      const historyMessages: ChatMessage[] = historyList.map((item: API.ChatInfoResVo) => ({
+      const chatHisList = response.data.data.list
+      const historyMessages: ChatMessage[] = chatHisList.map((item: API.ChatInfoResVo) => ({
         id: item.id || generateId(),
         type: item.messageType === 'user' ? 'user' : 'ai',
         content: item.message || '',
@@ -648,29 +628,22 @@ const loadChatHistory = async (isLoadMore = false, currentAppId: string) => {
       }))
 
       if (isLoadMore) {
-        // 加载更多：在前面插入历史消息
+        // 不是首次则将获取的历史数据向头部插入
         chat.messages.value = [...historyMessages, ...chat.messages.value]
       } else {
-        // 首次加载：替换消息列表
         chat.messages.value = historyMessages
       }
 
-      // 更新分页状态
-      chat.hasMoreHistory.value = historyList.length === chat.historyPageSize.value
-
-      // 更新最后的创建时间作为下次查询的游标
-      if (historyList.length > 0) {
-        const lastItem = historyList[0]
-        chat.lastCreateTime.value = lastItem.createTime || ''
+      // 更新数据以便下次查询使用
+      if (chatHisList.length > 0) {
+        chat.lastCreateTime.value = DateUtil.formatDate(historyMessages[0].timestamp)
+        chat.hasMoreHistory.value = true
+      } else {
+        chat.hasMoreHistory.value = false
       }
-    } else {
-      chat.hasMoreHistory.value = false
     }
   } catch (error) {
-    console.error('加载对话历史失败:', error)
-    message.error('加载对话历史失败')
-  } finally {
-    chat.isLoadingHistory.value = false
+    console.error('获取聊天记录失败:', error)
   }
 }
 
@@ -737,7 +710,7 @@ const startCodeGeneration = async (messageContent: string) => {
     setTimeout(async () => {
       if (appId.value) {
         try {
-          await handlePreview()
+          await handlePreview(appId.value, true)
         } catch (previewError) {
           console.error('预览更新失败:', previewError)
         }
@@ -795,7 +768,7 @@ const startCodeGeneration = async (messageContent: string) => {
 
       // 获取最新状态
       if (appId.value) {
-        await getAppStatus(appId.value)
+        await getAppStatus({ appId: appId.value })
       }
 
       handleSuccess()
@@ -853,47 +826,28 @@ const buildMessage = (type: 'user' | 'ai', content: string, isLoading: boolean):
 }
 
 /**
- * 预览处理
+ * 处理预览按钮点击
  */
-const handlePreview = async () => {
-  if (!appId.value) {
-    message.error('appId 不存在')
-    return
-  }
+const handlePreviewClick = async () => {
+  if (!appId.value) return
   preview.isLoading.value = true
-  preview.url.value = ''
+  await handlePreview(appId.value, true)
+}
 
-  const progressSteps = [
-    { text: '思考理解需求...' },
-    { text: '构建应用代码...' },
-    { text: '输出目标内容...' },
-  ]
-  let stepIndex = 0
-  const updateProgress = () => {
-    if (stepIndex < progressSteps.length) {
-      const step = progressSteps[stepIndex]
-      preview.progressText.value = step.text
-      stepIndex++
-      setTimeout(updateProgress, 800)
-    }
-  }
-  updateProgress()
-
+const handlePreview = async (previewAppId: string, reBuild: boolean) => {
+  preview.isLoading.value = true
   try {
-    // 调用新的预览接口
-    await doPreview({ appId: appId.value, reBuild: true })
-
-    // 预览成功后更新iframe URL
-    preview.url.value = getPreviewUrl()
-    preview.progressText.value = '部署完成！'
-    preview.preview.value = true
-    message.success('应用部署成功！')
-
-    // 获取最新状态
-    await getAppStatus()
+    const response = await getAppPreviewUrl({ appId: previewAppId, reBuild: reBuild })
+    if (response.data.data) {
+      preview.url.value = response.data.data
+      preview.preview.value = true
+      message.success('预览生成成功！')
+      if (reBuild) {
+        await getAppStatusById()
+      }
+    }
   } catch (error) {
-    console.error('部署预览出错:', error)
-    message.error('部署失败，请重试')
+    console.error('预览生成失败:', error)
   } finally {
     preview.isLoading.value = false
   }
@@ -927,41 +881,16 @@ const handleDeploy = async (reDeploy: boolean = false) => {
 
   try {
     appStatus.loading = true
-    await doDeploy({ appId: appId.value })
+    await putAppDeploy({ appId: appId.value })
     message.success(reDeploy ? '重新部署成功！' : '部署成功！')
 
     // 获取最新状态
-    await getAppStatus()
+    await getAppStatusById()
   } catch (error) {
     console.error('部署失败:', error)
     message.error('部署失败，请重试')
   } finally {
     appStatus.loading = false
-  }
-}
-
-/**
- * 处理预览按钮点击
- */
-const handlePreviewClick = async () => {
-  if (!appId.value) return
-
-  try {
-    preview.isLoading.value = true
-    await doPreview({ appId: appId.value, reBuild: false })
-
-    // 预览成功后更新iframe URL
-    preview.url.value = getPreviewUrl()
-    preview.preview.value = true
-    message.success('预览生成成功！')
-
-    // 获取最新状态
-    await getAppStatus()
-  } catch (error) {
-    console.error('预览失败:', error)
-    message.error('预览生成失败')
-  } finally {
-    preview.isLoading.value = false
   }
 }
 
@@ -989,276 +918,6 @@ const scrollToBottom = () => {
       messageListRef.value.scrollTop = messageListRef.value.scrollHeight
     }
   })
-}
-
-/**
- * 聊天区域滚动监听函数，实现滚动到顶部时加载更多历史消息
- * @param event 滚动事件对象
- */
-const handleChatScroll = (event: Event) => {
-  const target = event.target as HTMLElement
-  if (!target) return
-
-  // 检查是否滚动到顶部附近（距离顶部50px以内）
-  if (target.scrollTop <= 50 && chat.hasMoreHistory.value && !chat.isLoadingHistory.value) {
-    loadChatHistory(true, appId.value)
-  }
-}
-
-/**
- * 智能滚动监听函数，实现滚动到底部时加载更多
- * 使用防抖机制避免频繁触发，并采用更智能的触发条件
- * @param event 滚动事件对象
- */
-const handleAppListScroll = (event: Event) => {
-  const target = event.target as HTMLElement
-  if (!target) return
-
-  // 清除之前的防抖定时器
-  if (scrollDebounceTimer) {
-    clearTimeout(scrollDebounceTimer)
-  }
-
-  // 设置防抖定时器
-  scrollDebounceTimer = setTimeout(() => {
-    // 检查基本条件
-    if (!appList.hasMore.value || appList.isLoadingMore.value || appList.isLoading.value) {
-      return
-    }
-
-    const scrollTop = target.scrollTop
-    const scrollHeight = target.scrollHeight
-    const clientHeight = target.clientHeight
-
-    // 计算滚动百分比
-    const scrollPercentage = (scrollTop + clientHeight) / scrollHeight
-
-    // 使用80%阈值触发加载更多
-    if (scrollPercentage >= 0.8) {
-      console.log(`滚动达到 ${Math.round(scrollPercentage * 100)}% 阈值，触发加载更多`)
-      getAppList(true)
-    }
-  }, SCROLL_DEBOUNCE_DELAY)
-}
-
-/**
- * 智能获取应用列表
- * @param isLoadMore 是否为加载更多模式
- */
-const getAppList = async (isLoadMore = false) => {
-  if (!loginUserStore.isLogin()) return
-
-  // 防止重复加载或已无更多数据
-  if (isLoadMore && (appList.isLoadingMore.value || !appList.hasMore.value)) {
-    return
-  }
-
-  if (!isLoadMore && appList.isLoading.value) {
-    return
-  }
-
-  try {
-    if (isLoadMore) {
-      appList.isLoadingMore.value = true
-    } else {
-      appList.isLoading.value = true
-      appList.isLoadingMore.value = false
-      appList.hasMore.value = true
-      currentPage.value = 1
-    }
-
-    // 智能调整页面大小：首次加载时确保达到最小数据量
-    let requestPageSize = pageSize.value
-    if (!isLoadMore) {
-      requestPageSize = Math.max(pageSize.value, appList.minInitialSize.value)
-    }
-
-    const queryReq: API.AppQueryReqVo = {
-      pageNo: currentPage.value,
-      pageSize: requestPageSize,
-      startTime: appList.currentIndex.value || DateUtil.getFormattedPreviousPeriod(1, 'day'),
-      endTime: appList.lastIndex.value || DateUtil.getCurrentFormatted(),
-      maxId: appList.lastId.value || undefined,
-    }
-    const response = await getList({ queryReqVo: queryReq })
-    console.log('response', response)
-    if (response.data.data?.list && response.data.data?.list.length > 0) {
-      await handleAppList(response.data.data, isLoadMore)
-
-      // 首次加载后检查数据量是否足够
-      if (!isLoadMore) {
-        const dataCount = response.data.data.list.length
-        const minRequired = appList.minInitialSize.value
-
-        // 如果数据存在但不足最小要求，执行补全查询
-        if (dataCount > 0 && dataCount < minRequired && appList.data.value.length > 0) {
-          console.log(`首次查询数据不足(${dataCount}/${minRequired})，执行补全查询`)
-          await performSupplementQuery()
-        }
-
-        // 自动加载计数器重置逻辑已简化
-      }
-    } else {
-      // 备用查询逻辑：完全没有数据时的左开右闭查询
-      const reQueryReq: API.AppQueryReqVo = {
-        pageNo: 1,
-        pageSize: 20,
-        endTime: appList.lastIndex.value || DateUtil.getCurrentFormatted(),
-        maxId: appList.lastId.value || undefined,
-      }
-      const response = await getList({ queryReqVo: reQueryReq })
-      if (response.data.data?.list && response.data.data?.list.length > 0) {
-        await handleAppList(response.data.data, isLoadMore)
-      } else {
-        appList.hasMore.value = false
-      }
-    }
-  } catch (error) {
-    console.error('获取应用列表失败:', error)
-    handleLoadError(error)
-  } finally {
-    appList.isLoading.value = false
-    appList.isLoadingMore.value = false
-  }
-}
-
-/**
- * 执行数据补全查询
- * 当首次查询数据不足时，基于最早数据时间执行左开右闭查询
- */
-const performSupplementQuery = async () => {
-  try {
-    if (appList.data.value.length === 0) return
-
-    // 获取当前数据中最早的时间作为endTime
-    const earliestApp = appList.data.value[appList.data.value.length - 1]
-    const earliestTime = DateUtil.formatDate(earliestApp.updateTime)
-
-    console.log(`执行补全查询，endTime: ${earliestTime}`)
-
-    const supplementReq: API.AppQueryReqVo = {
-      pageNo: 1,
-      pageSize: appList.minInitialSize.value,
-      endTime: earliestTime, // 左开右闭：不包含当前最早时间
-      maxId: undefined, // 不使用maxId限制
-    }
-
-    const response = await getList({ queryReqVo: supplementReq })
-    if (response.data.data?.list && response.data.data?.list.length > 0) {
-      // 将补全数据追加到现有数据后面
-      appList.data.value = [...appList.data.value, ...response.data.data.list]
-
-      // 更新时间索引和分页信息
-      const lastApp = response.data.data.list[response.data.data.list.length - 1]
-      if (lastApp && lastApp.id) {
-        appList.lastId.value = lastApp.id
-        appList.lastIndex.value = DateUtil.formatDate(lastApp.updateTime)
-        appList.currentIndex.value = DateUtil.getFormattedPreviousPeriod(
-          1,
-          'day',
-          appList.lastIndex.value,
-        )
-      }
-
-      // 更新hasMore状态
-      const supplementCount = response.data.data.list.length
-      appList.currentHasMore.value = supplementCount === appList.minInitialSize.value
-
-      console.log(
-        `补全查询完成，新增 ${supplementCount} 条数据，总数据量: ${appList.data.value.length}`,
-      )
-    } else {
-      console.log('补全查询无数据，设置hasMore为false')
-      appList.hasMore.value = false
-      appList.currentHasMore.value = false
-    }
-  } catch (error) {
-    console.error('补全查询失败:', error)
-    // 补全查询失败不影响主流程，只记录错误
-  }
-}
-
-/**
- * 处理加载错误的恢复机制
- * @param error 错误对象
- */
-const handleLoadError = (error: unknown) => {
-  console.error('应用列表加载失败:', error)
-
-  // 重置加载状态
-  appList.isLoading.value = false
-  appList.isLoadingMore.value = false
-
-  // 显示用户友好的错误提示
-  message.error('加载应用列表失败，请稍后重试')
-}
-
-/**
- * 处理应用列表数据
- * @param responseData 响应数据
- * @param isLoadMore 是否加载更多
- */
-const handleAppList = (responseData: API.PageResVoAppInfoCommonResVo, isLoadMore: boolean) => {
-  if (!responseData || !responseData.list) {
-    appList.currentHasMore.value = false
-    return
-  }
-
-  const handleList = responseData.list
-
-  if (isLoadMore) {
-    // 加载更多：追加数据
-    appList.data.value = [...appList.data.value, ...handleList]
-  } else {
-    // 首次加载：替换数据
-    appList.data.value = handleList
-  }
-
-  // 优化判断是否还有更多数据的逻辑
-  // 考虑数据完整性而不仅仅是数量匹配
-  if (isLoadMore) {
-    // 加载更多时：基于返回数据量和总页数判断
-    appList.currentHasMore.value =
-      handleList.length === pageSize.value && currentPage.value < Number(responseData.totalPage)
-  } else {
-    // 首次加载时：考虑数据补全机制，更宽松的判断
-    const hasFullPage = handleList.length >= pageSize.value
-    const hasMorePages = currentPage.value < Number(responseData.totalPage)
-    const hasMinimumData =
-      handleList.length >= Math.min(pageSize.value, appList.minInitialSize.value)
-
-    // 如果有完整页面数据或者有更多页面，则认为可能有更多数据
-    // 如果数据量达到最小要求但不足一页，通过补全查询来确定
-    appList.currentHasMore.value =
-      (hasFullPage && hasMorePages) ||
-      (hasMinimumData && hasMorePages) ||
-      (handleList.length > 0 && Number(responseData.totalPage) > 1)
-  }
-
-  appList.hasMore.value = true
-
-  // 更新时间索引
-  if (handleList.length > 0) {
-    const lastApp = handleList[handleList.length - 1]
-    if (lastApp && lastApp.id) {
-      appList.lastId.value = lastApp.id
-    }
-    if (appList.currentHasMore.value) {
-      appList.lastIndex.value = DateUtil.formatDate(lastApp.updateTime)
-      appList.currentIndex.value = DateUtil.getFormattedPreviousPeriod(
-        1,
-        'day',
-        appList.lastIndex.value,
-      )
-    } else {
-      appList.lastIndex.value = appList.currentIndex.value
-      appList.currentIndex.value = DateUtil.getFormattedPreviousPeriod(
-        1,
-        'day',
-        appList.lastIndex.value,
-      )
-    }
-  }
 }
 
 /**
@@ -1415,14 +1074,6 @@ const handleDownloadClick = async () => {
   } finally {
     downloadLoading.value = false
   }
-}
-
-/**
- * 获取预览URL
- * @param currentAppId 应用ID
- */
-const getPreviewUrl = () => {
-  return `${getBaseUrl()}/app/preview/${appId.value}`
 }
 
 // 组件卸载时清理防抖定时器

@@ -47,6 +47,15 @@
       </a-form>
     </template>
 
+    <!-- 操作按钮 -->
+    <template #actions>
+      <a-space>
+        <a-button type="primary" @click="refreshList">
+          <ReloadOutlined /> 刷新
+        </a-button>
+      </a-space>
+    </template>
+
     <!-- 应用列表 -->
     <template #default>
       <a-table
@@ -238,7 +247,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import { SearchOutlined, ReloadOutlined, FileImageOutlined } from '@ant-design/icons-vue'
-import { getInfo1, getList1, update1 } from '@/api/adminAppController.ts'
+import { getAppInfoAdmin, getAppListAdmin, putAppUpdateAdmin } from '@/api/adminAppController.ts'
 import type { TableColumnsType, TableProps, FormInstance } from 'ant-design-vue'
 import { useEnumStore } from '@/stores/enum.ts'
 import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
@@ -366,7 +375,7 @@ const getCodeGenTypes = async () => {
 const getAppList = async () => {
   try {
     loading.value = true
-    const res = await getList1({
+    const res = await getAppListAdmin({
       queryReqVo: searchForm,
     })
 
@@ -420,7 +429,7 @@ const handleTableChange: TableProps['onChange'] = (pag) => {
  */
 const viewApp = async (app: API.AppInfoAdminResVo) => {
   try {
-    const res = await getInfo1({ id: app.id! })
+    const res = await getAppInfoAdmin({ id: app.id! })
     if (res.data?.data) {
       currentApp.value = res.data.data
       appDetailVisible.value = true
@@ -452,7 +461,7 @@ const handleUpdateApp = async () => {
     await editFormRef.value?.validate()
     updateLoading.value = true
 
-    await update1(editForm)
+    await putAppUpdateAdmin(editForm)
     message.success('应用信息更新成功')
     editAppVisible.value = false
     await getAppList() // 刷新列表
@@ -461,6 +470,13 @@ const handleUpdateApp = async () => {
   } finally {
     updateLoading.value = false
   }
+}
+
+/**
+ * 刷新列表
+ */
+const refreshList = () => {
+  getAppList()
 }
 
 /**

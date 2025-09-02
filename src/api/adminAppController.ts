@@ -3,9 +3,9 @@
 import request from '@/request'
 
 /** 获取应用详情 GET /admin/app/${param0} */
-export async function getInfo1(
+export async function getAppInfoAdmin(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getInfo1Params,
+  params: API.getAppInfoAdminParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params
@@ -17,9 +17,9 @@ export async function getInfo1(
 }
 
 /** 获取用户应用列表 GET /admin/app/list */
-export async function getList1(
+export async function getAppListAdmin(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getList1Params,
+  params: API.getAppListAdminParams,
   options?: { [key: string]: any }
 ) {
   return request<API.PageResponseAppInfoAdminResVo>('/admin/app/list', {
@@ -33,10 +33,13 @@ export async function getList1(
   })
 }
 
-/** 更新应用信息 POST /admin/app/update */
-export async function update1(body: API.AppUpdateAdminReqVo, options?: { [key: string]: any }) {
+/** 更新应用信息 PUT /admin/app/update */
+export async function putAppUpdateAdmin(
+  body: API.AppUpdateAdminReqVo,
+  options?: { [key: string]: any }
+) {
   return request<API.BaseResponseVoid>('/admin/app/update', {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },

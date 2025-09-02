@@ -3,9 +3,9 @@
 import request from '@/request'
 
 /** 获取应用详情 GET /app/${param0} */
-export async function getInfo(
+export async function getAppInfo(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getInfoParams,
+  params: API.getAppInfoParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params
@@ -17,9 +17,9 @@ export async function getInfo(
 }
 
 /** 删除应用 DELETE /app/${param0} */
-export async function delete1(
+export async function delApp(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.delete1Params,
+  params: API.delAppParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params
@@ -31,9 +31,9 @@ export async function delete1(
 }
 
 /** 获取用户应用列表 GET /app/list */
-export async function getList(
+export async function getAppList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getListParams,
+  params: API.getAppListParams,
   options?: { [key: string]: any }
 ) {
   return request<API.PageResponseAppInfoCommonResVo>('/app/list', {
@@ -48,17 +48,20 @@ export async function getList(
 }
 
 /** 获取精选应用列表 GET /app/list/featured */
-export async function getFeaturedList(options?: { [key: string]: any }) {
+export async function getFeaturedAppList(options?: { [key: string]: any }) {
   return request<API.PageResponseAppInfoCommonResVo>('/app/list/featured', {
     method: 'GET',
     ...(options || {}),
   })
 }
 
-/** 更新应用信息 POST /app/update */
-export async function update(body: API.AppUpdateCommonReqVo, options?: { [key: string]: any }) {
+/** 更新应用信息 PUT /app/update */
+export async function putAppUpdate(
+  body: API.AppUpdateCommonReqVo,
+  options?: { [key: string]: any }
+) {
   return request<API.BaseResponseVoid>('/app/update', {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },

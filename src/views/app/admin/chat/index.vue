@@ -135,7 +135,9 @@
           <a-descriptions :column="2" bordered style="margin-bottom: 24px">
             <a-descriptions-item label="对话ID">{{ currentChat.id }}</a-descriptions-item>
             <a-descriptions-item label="应用ID">{{ currentChat.appId || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="用户ID">{{ currentChat.userId || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="用户ID">{{
+              currentChat.userId || '-'
+            }}</a-descriptions-item>
             <a-descriptions-item label="消息类型">
               <a-tag :color="currentChat.messageType === 'USER' ? 'blue' : 'green'">
                 {{ currentChat.messageType === 'USER' ? '用户消息' : 'AI回复' }}
@@ -165,10 +167,10 @@ import type { TableColumnsType, TableProps } from 'ant-design-vue'
 import { message, Modal } from 'ant-design-vue'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import type { Dayjs } from 'dayjs'
-import { adminList } from '@/api/chatHistoryController.ts'
 import DateUtil from '@/utils/DateUtil.ts'
 import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
 import MarkdownReader from '@/components/Markdown/index.vue'
+import { getChatHisListAdmin } from '@/api/chatHistoryAdminController.ts'
 
 // 搜索表单
 const searchForm = reactive<{
@@ -273,7 +275,7 @@ const getChatList = async () => {
       searchForm.endTime = undefined
     }
 
-    const res = await adminList({
+    const res = await getChatHisListAdmin({
       reqVo: {
         pageNo: searchForm.pageNo,
         pageSize: searchForm.pageSize,
@@ -362,7 +364,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-
 .message-content {
   max-width: 300px;
 }

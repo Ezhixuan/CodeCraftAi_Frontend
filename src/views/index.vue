@@ -86,8 +86,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { getFeaturedList, getList } from '@/api/appController.ts'
-import { doGenerate } from '@/api/appCoreController'
+import { getAppList, getFeaturedAppList } from '@/api/appController.ts'
+import { postAppInfo } from '@/api/appCoreController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import router from '@/router'
 import Input from '@/components/Input/index.vue'
@@ -135,7 +135,7 @@ const loadUserApps = async () => {
 
   userAppsLoading.value = true
   try {
-    const response = await getList({
+    const response = await getAppList({
       queryReqVo: {
         pageNo: 1,
         pageSize: 9,
@@ -159,7 +159,7 @@ const loadUserApps = async () => {
 const loadFeaturedApps = async () => {
   featuredAppsLoading.value = true
   try {
-    const response = await getFeaturedList()
+    const response = await getFeaturedAppList()
     if (response.data.data?.list) {
       featuredApps.value = response.data.data?.list || []
     }
@@ -188,7 +188,7 @@ const handleSubmit = async () => {
   // 初始化应用
   isGenerating.value = true
   try {
-    const response = await doGenerate({
+    const response = await postAppInfo({
       initPrompt: userInput.value,
     })
     if (response.data.data) {
