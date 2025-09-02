@@ -11,7 +11,7 @@ const router = createRouter({
     // 代码生成和预览页面
     {
       path: '/App/code-message',
-      name: 'CodeMessage',
+      name: 'code-message',
       component: () => import('@/views/app/index.vue'),
       meta: {
         hideLayout: true,

@@ -217,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, reactive, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
@@ -262,14 +262,6 @@ const app = ref<App>({
   isOwner: false,
   id: '',
 })
-
-const appList = {
-  data: ref<API.AppInfoCommonResVo[]>([]),
-  isLoading: ref(false),
-  hasMore: ref(true),
-  pageNo: ref(1),
-  pageSize: ref(20),
-}
 
 const chat = {
   messages: ref<ChatMessage[]>([]),
@@ -395,9 +387,8 @@ const handleLogoMouseLeave = () => {
 useInfiniteScroll(
   messageListRef,
   async () => {
-    if (chat.hasMoreHistory.value && !chat.isLoadingHistory.value) {
-      await getChatHistoryById(appId.value)
-    }
+    await getChatHistoryById(appId.value)
+    chat.historyPageNum.value += 1
   },
   {
     distance: 10,
@@ -407,31 +398,34 @@ useInfiniteScroll(
 )
 
 onMounted(async () => {
-  // 进入页面后初始化数据
-  // 1. 获取应用 id
-  if (!route.query.appId) {
-    message.error('该应用或许不存在')
-    await router.push('/')
-  }
-  const appId = route.query.appId as string
-  await initByAppId(appId)
+  try {
+    // 进入页面后初始化数据
+    if (!route.query.appId) {
+      message.error('该应用或许不存在')
+      await router.push('/')
+    }
+    const appId = route.query.appId as string
+    await initByAppId(appId)
 
-  // 3. 检查URL参数action是否等于1
-  const actionParam = Number(route.query.action)
-  if (actionParam === 1) {
-    const userMessage = route.query.userMessage as string
-    if (userMessage) {
+    const actionParam = Number(route.query.action)
+    if (actionParam === 1) {
+      const userMessage = route.query.userMessage as string
+      if (userMessage) {
+        const userMsg = buildMessage('user', userMessage, false)
+        chat.messages.value.push(userMsg)
+        await startCodeGeneration(userMessage)
+        // 生成成功后移除URL中的action=1参数
+        await removeActionParam()
+      }
+    } else if (route.query.userMessage) {
+      // 如果有用户消息但action不为1，只添加消息不生成
+      const userMessage = route.query.userMessage as string
       const userMsg = buildMessage('user', userMessage, false)
       chat.messages.value.push(userMsg)
-      await startCodeGeneration(userMessage)
-      // 生成成功后移除URL中的action=1参数
-      await removeActionParam()
     }
-  } else if (route.query.userMessage) {
-    // 如果有用户消息但action不为1，只添加消息不生成
-    const userMessage = route.query.userMessage as string
-    const userMsg = buildMessage('user', userMessage, false)
-    chat.messages.value.push(userMsg)
+  } catch (error) {
+    message.error('页面加载失败')
+    await router.push('/')
   }
 })
 
@@ -502,6 +496,7 @@ const getAppStatusById = async (currentAppId?: string) => {
 const getChatHistoryById = async (currentAppId?: string) => {
   const targetAppId = currentAppId || appId.value
   if (!targetAppId) return
+  console.log('num', chat.historyPageNum.value)
   chat.isLoadingHistory.value = true
   try {
     const response = await getChatHisList({
@@ -509,7 +504,6 @@ const getChatHistoryById = async (currentAppId?: string) => {
         pageNo: chat.historyPageNum.value,
         pageSize: chat.historyPageSize.value,
         appId: targetAppId,
-        endTime: chat.lastCreateTime.value || DateUtil.getCurrentFormatted(),
         orderBy: 'desc',
       },
     })
@@ -533,12 +527,7 @@ const getChatHistoryById = async (currentAppId?: string) => {
       }
 
       // 更新数据以便下次查询使用
-      if (chatHisList.length > 0) {
-        chat.lastCreateTime.value = DateUtil.formatDate(historyMessages[0].timestamp)
-        chat.hasMoreHistory.value = true
-      } else {
-        chat.hasMoreHistory.value = false
-      }
+      chat.hasMoreHistory.value = chatHisList.length >= chat.historyPageSize.value
     }
   } catch (error) {
     console.error('获取聊天记录失败:', error)
@@ -810,14 +799,6 @@ const scrollToBottom = () => {
 }
 
 /**
- * 处理新建应用点击事件
- */
-const handleCreateApp = () => {
-  isVisibleOfDrawer.value = false
-  router.push('/')
-}
-
-/**
  * 处理应用项点击事件
  */
 const handleAppClick = async (app: API.AppInfoCommonResVo) => {
@@ -828,10 +809,10 @@ const handleAppClick = async (app: API.AppInfoCommonResVo) => {
 
     await router.push('/App/code-message?appId=' + app.id)
     await initByAppId(app.id)
-    chat.lastCreateTime.value = DateUtil.getCurrentFormatted()
     chat.firstLoad.value = true
     navKey.value += 1
     contentKey.value += 1
+    chat.historyPageNum.value = 1
     await getChatHistoryById(app.id)
   } catch (error) {
     console.error('应用跳转失败', error)
