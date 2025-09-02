@@ -7,98 +7,12 @@
       @logoMouseOver="handleLogoMouseOver"
     />
     <div class="code-message-container" :key="contentKey">
-      <a-drawer
-        :open="isVisibleOfDrawer"
-        :closable="false"
-        placement="left"
-        :get-container="false"
+      <AppDrawer
+        :visible="isVisibleOfDrawer"
         @close="handleLogoMouseLeave"
-        :style="{ position: 'absolute' }"
-      >
-        <div class="drawer-content">
-          <!-- 顶部区域：新建应用和跳转首页 -->
-          <div class="drawer-header">
-            <a-space direction="vertical" size="small" style="width: 100%">
-              <a-button type="primary" block @click="handleCreateApp">
-                <template #icon><PlusOutlined /></template>
-                新建应用
-              </a-button>
-            </a-space>
-          </div>
-
-          <!-- 中间区域：应用列表 -->
-          <div class="drawer-body" ref="appListRef">
-            <div class="app-list-section">
-              <h4>我的应用</h4>
-              <a-spin :spinning="appList.isLoading.value">
-                <div
-                  v-if="appList.data.value.length === 0 && !appList.isLoading.value"
-                  class="empty-state"
-                >
-                  <div class="empty-icon">📱</div>
-                  <p>暂无应用</p>
-                  <a-button type="link" @click="handleCreateApp">创建第一个应用</a-button>
-                </div>
-                <div v-else>
-                  <a-list :data-source="appList.data.value" size="small">
-                    <template #renderItem="{ item }">
-                      <a-list-item class="app-item" @click="handleAppClick(item)">
-                        <a-list-item-meta>
-                          <template #avatar>
-                            <a-avatar :src="item.cover" shape="square">
-                              {{ item.name?.charAt(0) || 'A' }}
-                            </a-avatar>
-                          </template>
-                          <template #title>
-                            <div class="app-title">{{ item.name }}</div>
-                          </template>
-                          <template #description>
-                            <div class="app-time">
-                              {{ DateUtil.formatAppTime(item.updateTime) }}
-                            </div>
-                          </template>
-                        </a-list-item-meta>
-                      </a-list-item>
-                    </template>
-                  </a-list>
-
-                  <!-- 加载更多指示器 -->
-                  <div v-if="appList.isLoading.value" class="load-more-indicator">
-                    <a-spin size="small" />
-                    <span>加载中...</span>
-                  </div>
-
-                  <!-- 没有更多数据指示器 -->
-                  <div
-                    v-if="!appList.hasMore && appList.data.value.length > 0"
-                    class="no-more-indicator"
-                  >
-                    没有更多应用了
-                  </div>
-                </div>
-              </a-spin>
-            </div>
-          </div>
-
-          <!-- 底部区域：用户信息 -->
-          <div class="drawer-footer">
-            <div v-if="loginUserStore.isLogin()" class="user-info">
-              <a-avatar :src="loginUserStore.loginUser.avatar" size="small">
-                {{ loginUserStore.loginUser.name?.charAt(0) || 'U' }}
-              </a-avatar>
-              <div class="user-details">
-                <div class="user-name">{{ loginUserStore.loginUser.name }}</div>
-                <div class="user-role">
-                  {{ loginUserStore.getRoleText(loginUserStore.loginUser.role) }}
-                </div>
-              </div>
-            </div>
-            <div v-else class="login-prompt">
-              <a-button type="link" @click="handleLogin">登录</a-button>
-            </div>
-          </div>
-        </div>
-      </a-drawer>
+        @login="handleLogin"
+        @app-click="handleAppClick"
+      />
 
       <div class="main-content">
         <div class="left-panel">
@@ -152,15 +66,11 @@
                     >
                       <a-button size="small" type="text" @click="copyToClipboard(message.content)">
                         <template #icon><CopyOutlined /></template>
-                        复制代码
-                      </a-button>
-                      <a-button size="small" type="text" @click="regenerateResponse(index)">
-                        <template #icon><ReloadOutlined /></template>
-                        重新生成
+                        复制回答
                       </a-button>
                     </div>
                     <div class="message-time" v-if="!message.isLoading">
-                      {{ formatTime(message.timestamp) }}
+                      {{ DateUtil.formatDate(message.timestamp, 'YYYY-MM-DD HH:mm:ss') }}
                     </div>
                   </div>
                 </div>
@@ -316,14 +226,13 @@ import {
   ExclamationCircleOutlined,
   ExportOutlined,
   LoadingOutlined,
-  PlusOutlined,
-  ReloadOutlined,
   RocketOutlined,
 } from '@ant-design/icons-vue'
 import { useInfiniteScroll } from '@vueuse/core'
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownReader from '@/components/Markdown/index.vue'
 import Input from '@/components/Input/index.vue'
+import AppDrawer from '@/views/app/components/AppDrawer.vue'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { getBaseUrl } from '@/config/env.ts'
 import DateUtil from '@/utils/DateUtil.ts'
@@ -399,13 +308,11 @@ const isVisibleOfDrawer = ref(false)
 const newMessage = ref('')
 
 const messageListRef = ref<HTMLElement | null>(null)
-const appListRef = ref<HTMLElement | null>(null)
 const navKey = ref('0')
 const contentKey = ref(0)
 const route = useRoute()
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
-let scrollDebounceTimer: number | null = null
 const generatingTextIndex = ref(0)
 
 const welcomeMessage = `# 👋 欢迎使用 CodeCraftAI
@@ -485,11 +392,6 @@ const handleLogoMouseLeave = () => {
   isVisibleOfDrawer.value = false
 }
 
-useInfiniteScroll(appListRef, async () => {}, {
-  distance: 100,
-  canLoadMore: () => true,
-})
-
 useInfiniteScroll(
   messageListRef,
   async () => {
@@ -498,7 +400,7 @@ useInfiniteScroll(
     }
   },
   {
-    distance: 100,
+    distance: 10,
     direction: 'top',
     canLoadMore: () => chat.hasMoreHistory.value && !chat.isLoadingHistory.value,
   },
@@ -864,23 +766,20 @@ const handleDeployClick = async () => {
       content: '应用已部署，是否重新部署？',
       okText: '确认',
       cancelText: '取消',
-      onOk: () => handleDeploy(true),
+      onOk: () => handleDeploy(),
     })
-  } else {
-    await handleDeploy(false)
   }
 }
 
 /**
  * 处理部署
  */
-const handleDeploy = async (reDeploy: boolean = false) => {
+const handleDeploy = async () => {
   if (!appId.value) return
-
+  appStatus.loading = true
   try {
-    appStatus.loading = true
+    // todo 这里后期需要根据配置的 nginx 进行路由跳转
     await putAppDeploy({ appId: appId.value })
-    message.success(reDeploy ? '重新部署成功！' : '部署成功！')
 
     // 获取最新状态
     await getAppStatusById()
@@ -897,14 +796,6 @@ const handleDeploy = async (reDeploy: boolean = false) => {
  */
 const generateId = () => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2)
-}
-
-/**
- * 格式化时间
- * @param timestamp 时间戳
- */
-const formatTime = (timestamp: number) => {
-  return new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
 /**
@@ -937,8 +828,11 @@ const handleAppClick = async (app: API.AppInfoCommonResVo) => {
 
     await router.push('/App/code-message?appId=' + app.id)
     await initByAppId(app.id)
+    chat.lastCreateTime.value = DateUtil.getCurrentFormatted()
+    chat.firstLoad.value = true
     navKey.value += 1
     contentKey.value += 1
+    await getChatHistoryById(app.id)
   } catch (error) {
     console.error('应用跳转失败', error)
     message.error('应用跳转失败')
@@ -984,21 +878,6 @@ const copyToClipboard = async (text: string) => {
   } catch (err) {
     console.error(err)
     message.error('复制失败')
-  }
-}
-
-/**
- * 重新生成回复
- * @param messageIndex 消息下标
- */
-const regenerateResponse = async (messageIndex: number) => {
-  if (chat.isLoading.value) return
-
-  const userMessage = chat.messages.value[messageIndex]
-
-  if (userMessage) {
-    chat.messages.value = chat.messages.value.slice(0, chat.messages.value.indexOf(userMessage) + 1)
-    await startCodeGeneration(userMessage.content)
   }
 }
 
@@ -1073,14 +952,6 @@ const handleDownloadClick = async () => {
     downloadLoading.value = false
   }
 }
-
-// 组件卸载时清理防抖定时器
-onUnmounted(() => {
-  if (scrollDebounceTimer) {
-    clearTimeout(scrollDebounceTimer)
-    scrollDebounceTimer = null
-  }
-})
 </script>
 
 <style scoped>
