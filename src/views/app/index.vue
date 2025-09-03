@@ -404,7 +404,6 @@ const handleLogoMouseLeave = () => {
 }
 
 const handleStartEditMode = () => {
-  isEditMode.value = !isEditMode.value
   if (isEditMode.value) {
     injectEditScriptToIframe()
   } else {
@@ -425,6 +424,19 @@ const clearEditMode = () => {
   isEditMode.value = false
   removeEditScriptFromIframe()
   clearElementSelection()
+
+  if (previewUrl.value && appId.value) {
+    const currentUrl = previewUrl.value
+    // 先设置为空，触发iframe卸载
+    previewUrl.value = ''
+
+    // 使用nextTick确保DOM更新完成后再设置新URL
+    nextTick(() => {
+      const baseUrl = currentUrl.split('?')[0]
+      const timestamp = Date.now()
+      previewUrl.value = `${baseUrl}?t=${timestamp}&reload=true`
+    })
+  }
 }
 
 useInfiniteScroll(
@@ -975,6 +987,7 @@ addMessageListener()
   gap: 12px;
   max-width: 100%;
   margin-bottom: 16px;
+  align-items: flex-start;
 }
 
 .ai-message {
@@ -983,8 +996,8 @@ addMessageListener()
 }
 
 .user-message {
-  flex-direction: row-reverse;
   justify-content: flex-start;
+  margin-left: auto;
 }
 
 /* Welcome message styling */
@@ -1011,7 +1024,7 @@ addMessageListener()
   border: 1px solid #e0e0e0;
   position: relative;
   border-radius: 12px;
-  max-width: 70%;
+  max-width: 90%;
   word-wrap: break-word;
   line-height: 1.5;
 }
@@ -1107,7 +1120,6 @@ addMessageListener()
   font-size: 12px;
 }
 
-
 /* Ensure UserAvatar component displays correctly */
 :deep(.user-avatar) {
   display: flex;
@@ -1117,6 +1129,22 @@ addMessageListener()
 :deep(.ant-avatar) {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.message-avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* AI消息头像在左侧 */
+.ai-message .message-avatar {
+  margin: 0 12px 0 0;
+}
+
+/* 用户消息头像在右侧 */
+.user-message .message-avatar {
+  margin: 0 0 0 12px;
 }
 
 .generating-indicator {

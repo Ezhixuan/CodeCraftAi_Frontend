@@ -226,7 +226,8 @@ export function useIframe() {
     try {
       // 等待 iframe 加载完成
       iframe.onload = function () {
-        const iframeDoc = iframe.contentDocument || (iframe.contentWindow ? iframe.contentWindow.document : null)
+        const iframeDoc =
+          iframe.contentDocument || (iframe.contentWindow ? iframe.contentWindow.document : null)
         if (iframeDoc) {
           const script = iframeDoc.createElement('script')
           script.textContent = getEditModeScript()
@@ -272,7 +273,6 @@ export function useIframe() {
       const infoStr =
         `${elementInfo.tagName}${elementInfo.id ? '#' + elementInfo.id : ''}${elementInfo.className ? '.' + elementInfo.className.replace(/\s+/g, '.') : ''} ${elementInfo.textContent ? '文本: ' + elementInfo.textContent.substring(0, 50) : ''} ${elementInfo.selector ? '选择器: ' + elementInfo.selector : ''}`.trim()
       selectedElementInfo.value = infoStr
-      message.info(`已选择元素: ${infoStr}`)
     }
   }
 
@@ -281,10 +281,13 @@ export function useIframe() {
     const iframe = document.querySelector('iframe') as HTMLIFrameElement
     if (!iframe || !iframe.contentWindow) return
 
-    iframe.contentWindow.postMessage({
-      type: 'TOGGLE_EDIT_MODE',
-      editMode: enabled
-    }, '*')
+    iframe.contentWindow.postMessage(
+      {
+        type: 'TOGGLE_EDIT_MODE',
+        editMode: enabled,
+      },
+      '*',
+    )
   }
 
   // 清除选中状态
@@ -292,9 +295,12 @@ export function useIframe() {
     const iframe = document.querySelector('iframe') as HTMLIFrameElement
     if (!iframe || !iframe.contentWindow) return
 
-    iframe.contentWindow.postMessage({
-      type: 'CLEAR_SELECTION'
-    }, '*')
+    iframe.contentWindow.postMessage(
+      {
+        type: 'CLEAR_SELECTION',
+      },
+      '*',
+    )
   }
 
   // 清除所有效果
@@ -302,9 +308,12 @@ export function useIframe() {
     const iframe = document.querySelector('iframe') as HTMLIFrameElement
     if (!iframe || !iframe.contentWindow) return
 
-    iframe.contentWindow.postMessage({
-      type: 'CLEAR_ALL_EFFECTS'
-    }, '*')
+    iframe.contentWindow.postMessage(
+      {
+        type: 'CLEAR_ALL_EFFECTS',
+      },
+      '*',
+    )
   }
 
   // 添加消息监听器
@@ -325,6 +334,6 @@ export function useIframe() {
     clearSelection,
     clearAllEffects,
     addMessageListener,
-    removeMessageListener
+    removeMessageListener,
   }
 }

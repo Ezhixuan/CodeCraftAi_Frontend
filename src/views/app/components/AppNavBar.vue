@@ -91,10 +91,10 @@
       </div>
 
       <div class="right-section" v-if="isOwnerCurr">
-        <a-button 
-          :type="editMode ? 'default' : 'primary'" 
+        <a-button
+          :type="editMode ? 'default' : 'primary'"
           :danger="editMode"
-          @click="startEditMode" 
+          @click="startEditMode"
           class="edit-button"
         >
           <template #icon><EditOutlined /></template>
