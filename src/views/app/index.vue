@@ -1190,6 +1190,7 @@ addMessageListener()
   color: #595959;
   word-break: break-all;
   margin-top: 4px;
+  white-space: pre-line;
 }
 
 /* Preview Area */

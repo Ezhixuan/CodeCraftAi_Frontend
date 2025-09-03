@@ -213,7 +213,7 @@ export function useIframe() {
     const tip = document.createElement('div');
     tip.id = 'edit-tip';
     tip.innerHTML = '🎯 编辑模式已开启<br/>悬浮查看元素，点击选中元素';
-    tip.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #1890ff; color: white; padding: 12px 16px; border-radius: 6px; font-size: 14px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: fadeIn 0.3s ease;';
+    tip.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #1890ff; color: white; padding: 12px 16px; border-radius: 6px; font-size: 14px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
     
     const style = document.createElement('style');
     style.textContent = '@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }';
@@ -291,16 +291,15 @@ export function useIframe() {
     if (event.data.type === 'ELEMENT_SELECTED') {
       const elementInfo = event.data.data.elementInfo as ElementInfo
       console.log('路由', elementInfo.pagePath, elementInfo.routePath)
-      const routeInfo = '路由: ' + elementInfo.routePath || '未知'
+      const routeInfo = '路由: ' + (elementInfo.routePath || '未知')
 
       const infoStr =
-        `${routeInfo} \n` +
-        `
-         ${elementInfo.tagName}
-         ${elementInfo.id ? '#' + elementInfo.id : ''}
-         ${elementInfo.className ? '.' + elementInfo.className.replace(/\s+/g, '.') : ''} 
-         ${elementInfo.textContent ? '文本: ' + elementInfo.textContent.substring(0, 50) : ''} 
-         ${elementInfo.selector ? '选择器: ' + elementInfo.selector : ''}`
+        `${routeInfo}\n` +
+        `${elementInfo.tagName}` +
+        `${elementInfo.id ? '#' + elementInfo.id : ''}` +
+        `${elementInfo.className ? '.' + elementInfo.className.replace(/\s+/g, '.') : ''}\n` +
+        `${elementInfo.textContent ? '文本: ' + elementInfo.textContent.substring(0, 50) : ''}\n` +
+        `${elementInfo.selector ? '选择器: ' + elementInfo.selector : ''}`
       selectedElementInfo.value = infoStr
     }
   }
