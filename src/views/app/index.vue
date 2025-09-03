@@ -53,9 +53,9 @@
                   :key="message.id"
                   :class="['message', message.type === 'user' ? 'user-message' : 'ai-message']"
                 >
-                  <div class="message-avatar">
-                    <div v-if="message.type === 'user'" class="user-avatar">👤</div>
-                    <img v-else src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
+                  <!-- AI Avatar (Left side) -->
+                  <div v-if="message.type === 'ai'" class="message-avatar">
+                    <img src="@/assets/codeAi 无背景.png" alt="AI" class="ai-avatar" />
                   </div>
 
                   <div class="message-content">
@@ -76,6 +76,11 @@
                     <div class="message-time" v-if="!message.isLoading">
                       {{ DateUtil.formatDate(message.timestamp, 'YYYY-MM-DD HH:mm:ss') }}
                     </div>
+                  </div>
+
+                  <!-- User Avatar (Right side) -->
+                  <div v-if="message.type === 'user'" class="message-avatar">
+                    <UserAvatar :user-info="appInfo?.userInfo" :size="36" />
                   </div>
                 </div>
               </div>
@@ -249,6 +254,7 @@ import AppNavBar from '@/views/app/components/AppNavBar.vue'
 import MarkdownReader from '@/components/Markdown/index.vue'
 import Input from '@/components/Input/index.vue'
 import AppDrawer from '@/views/app/components/AppDrawer.vue'
+import UserAvatar from '@/components/User/Avatar/index.vue'
 import { getBaseUrl } from '@/config/env.ts'
 import DateUtil from '@/utils/DateUtil.ts'
 import { putAppDeploy } from '@/api/appCoreController.ts'
@@ -968,60 +974,124 @@ addMessageListener()
   display: flex;
   gap: 12px;
   max-width: 100%;
+  margin-bottom: 16px;
 }
 
 .ai-message {
   flex-direction: row;
+  justify-content: flex-start;
 }
 
-.message-avatar .ai-avatar,
-.message-avatar .user-avatar {
+.user-message {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+/* Welcome message styling */
+.message.ai-message:first-child {
+  margin-top: 0;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+}
+
+.message-avatar .ai-avatar {
   width: 36px;
   height: 36px;
-  flex-shrink: 0;
-}
-
-.user-avatar {
-  background: #007bff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .message-content {
   padding: 12px 16px;
   border: 1px solid #e0e0e0;
   position: relative;
+  border-radius: 12px;
+  max-width: 70%;
+  word-wrap: break-word;
+  line-height: 1.5;
 }
 
 .user-message .message-content {
-  background: #007bff;
+  background: linear-gradient(135deg, #007bff, #0056b3);
   color: white;
-  border-color: #007bff;
-  margin-left: auto;
-  max-width: 80%;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
 }
 
 .ai-message .message-content {
   background: #f8f9fa;
-  max-width: 90%;
+  border-color: #e9ecef;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Add message bubble tail for better visual connection */
+.ai-message .message-content::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-right-color: #e9ecef;
+  border-left: 0;
+}
+
+.ai-message .message-content::after {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-right-color: #f8f9fa;
+  border-left: 0;
+}
+
+.user-message .message-content::before {
+  content: '';
+  position: absolute;
+  right: -8px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-left-color: #007bff;
+  border-right: 0;
+}
+
+.user-message .message-content::after {
+  content: '';
+  position: absolute;
+  right: -7px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-left-color: #007bff;
+  border-right: 0;
 }
 
 .message-time {
   font-size: 11px;
   color: #666666;
-  margin-top: 6px;
+  margin-top: 8px;
+  text-align: left;
 }
 .user-message .message-time {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
   text-align: right;
 }
 
 .message-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   margin-top: 8px;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -1029,6 +1099,24 @@ addMessageListener()
 
 .message:hover .message-actions {
   opacity: 1;
+}
+
+.message-actions .ant-btn {
+  padding: 4px 8px;
+  height: 24px;
+  font-size: 12px;
+}
+
+
+/* Ensure UserAvatar component displays correctly */
+:deep(.user-avatar) {
+  display: flex;
+  align-items: center;
+}
+
+:deep(.ant-avatar) {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .generating-indicator {
