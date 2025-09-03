@@ -216,10 +216,6 @@ import { computed, nextTick, onMounted, ref, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 
-// 定义 iframe 窗口类型
-interface IframeWindow extends Window {
-  __editModeDestroy?: () => void
-}
 import {
   CopyOutlined,
   DownloadOutlined,
@@ -239,6 +235,7 @@ import { putAppDeploy } from '@/api/appCoreController.ts'
 import { useApp } from '@/views/app/composables/useApp'
 import { useChat } from '@/views/app/composables/useChat'
 import { usePreview } from '@/views/app/composables/usePreview'
+import { useIframe } from '@/views/app/composables/useIframe'
 
 // 使用 composables
 const { app, appStatus, getAppStatusById, initByAppId } = useApp()
@@ -261,6 +258,13 @@ const {
   progressText,
   handlePreview,
 } = usePreview()
+const {
+  selectedElementInfo,
+  injectEditScriptToIframe,
+  removeEditScriptFromIframe,
+  addMessageListener,
+  removeMessageListener
+} = useIframe()
 
 // 下载状态
 const downloadLoading = ref(false)
@@ -268,7 +272,6 @@ const downloadLoading = ref(false)
 const isVisibleOfDrawer = ref(false)
 const newMessage = ref('')
 const isEditMode = ref(false)
-const selectedElementInfo = ref('')
 
 const messageListRef = ref<HTMLElement | null>(null)
 const navKey = ref('0')
@@ -782,286 +785,13 @@ onUnmounted(() => {
     previewLoading.value = false
   }
   // 移除消息监听器
-  window.removeEventListener('message', handleIframeMessage)
+  removeMessageListener()
 })
 
-// 监听 iframe 消息
-const handleIframeMessage = (event: MessageEvent) => {
-  if (event.data.type === 'elementSelected') {
-    selectedElementInfo.value = event.data.elementInfo
-    message.info(`已选择元素: ${event.data.elementInfo}`)
-  }
-}
 
 // 添加消息监听器
-window.addEventListener('message', handleIframeMessage)
+addMessageListener()
 
-// 向 iframe 注入编辑脚本
-const injectEditScriptToIframe = () => {
-  const iframe = document.querySelector('iframe')
-  if (!iframe) {
-    message.error('未找到 iframe')
-    return
-  }
-
-  const scriptContent = `
-    (function() {
-      let selectedElement = null;
-      let selectionOverlay = null;
-      let actionButtons = null;
-      let isEditModeActive = true;
-
-      // 创建选择覆盖层
-      function createSelectionOverlay() {
-        selectionOverlay = document.createElement('div');
-        selectionOverlay.style.position = 'fixed';
-        selectionOverlay.style.border = '2px dashed #1890ff';
-        selectionOverlay.style.backgroundColor = 'rgba(24, 144, 255, 0.1)';
-        selectionOverlay.style.pointerEvents = 'none';
-        selectionOverlay.style.zIndex = '9999';
-        selectionOverlay.style.display = 'none';
-        document.body.appendChild(selectionOverlay);
-      }
-
-      // 创建操作按钮
-      function createActionButtons() {
-        actionButtons = document.createElement('div');
-        actionButtons.style.position = 'fixed';
-        actionButtons.style.background = 'white';
-        actionButtons.style.border = '1px solid #d9d9d9';
-        actionButtons.style.borderRadius = '4px';
-        actionButtons.style.padding = '8px';
-        actionButtons.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-        actionButtons.style.zIndex = '10000';
-        actionButtons.style.display = 'none';
-        actionButtons.style.pointerEvents = 'auto'; // 确保按钮可点击
-        
-        const confirmBtn = document.createElement('button');
-        confirmBtn.textContent = '确认';
-        confirmBtn.style.marginRight = '8px';
-        confirmBtn.style.padding = '6px 12px';
-        confirmBtn.style.background = '#1890ff';
-        confirmBtn.style.color = 'white';
-        confirmBtn.style.border = 'none';
-        confirmBtn.style.borderRadius = '4px';
-        confirmBtn.style.cursor = 'pointer';
-        confirmBtn.onclick = handleConfirm;
-        
-        const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = '取消';
-        cancelBtn.style.padding = '6px 12px';
-        cancelBtn.style.background = '#f5f5f5';
-        cancelBtn.style.color = '#666';
-        cancelBtn.style.border = '1px solid #d9d9d9';
-        cancelBtn.style.borderRadius = '4px';
-        cancelBtn.style.cursor = 'pointer';
-        cancelBtn.onclick = handleCancel;
-        
-        actionButtons.appendChild(confirmBtn);
-        actionButtons.appendChild(cancelBtn);
-        document.body.appendChild(actionButtons);
-      }
-
-      // 处理元素选择
-      function handleElementHover(e) {
-        if (!isEditModeActive || selectedElement) return;
-        
-        const element = e.target;
-        // 跳过按钮、覆盖层元素及其子元素
-        if (element === actionButtons || actionButtons.contains(element) ||
-            element === selectionOverlay || selectionOverlay.contains(element)) {
-          return;
-        }
-        
-        const rect = element.getBoundingClientRect();
-        
-        // 更新选择覆盖层位置
-        selectionOverlay.style.display = 'block';
-        selectionOverlay.style.left = rect.left + 'px';
-        selectionOverlay.style.top = rect.top + 'px';
-        selectionOverlay.style.width = rect.width + 'px';
-        selectionOverlay.style.height = rect.height + 'px';
-      }
-
-      // 处理元素点击
-      function handleElementClick(e) {
-        if (!isEditModeActive) return;
-        
-        // 如果点击的是按钮或按钮的子元素，不处理
-        if (e.target === actionButtons || actionButtons.contains(e.target)) {
-          return;
-        }
-        
-        e.preventDefault();
-        e.stopPropagation();
-        
-        selectedElement = e.target;
-        const rect = selectedElement.getBoundingClientRect();
-        
-        // 更新选择覆盖层
-        selectionOverlay.style.border = '2px solid #1890ff';
-        selectionOverlay.style.backgroundColor = 'rgba(24, 144, 255, 0.2)';
-        selectionOverlay.style.left = rect.left + 'px';
-        selectionOverlay.style.top = rect.top + 'px';
-        selectionOverlay.style.width = rect.width + 'px';
-        selectionOverlay.style.height = rect.height + 'px';
-        
-        // 显示操作按钮
-        actionButtons.style.display = 'flex';
-        actionButtons.style.flexDirection = 'row';
-        actionButtons.style.gap = '8px';
-        
-        // 确保按钮在视口内
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const buttonWidth = actionButtons.offsetWidth;
-        const buttonHeight = actionButtons.offsetHeight;
-        
-        let buttonLeft = rect.left + window.scrollX;
-        let buttonTop = rect.bottom + window.scrollY + 10;
-        
-        // 如果按钮超出右边界，调整位置
-        if (buttonLeft + buttonWidth > viewportWidth) {
-          buttonLeft = Math.max(10, viewportWidth - buttonWidth - 10);
-        }
-        
-        // 如果按钮超出底部边界，调整到元素上方
-        if (buttonTop + buttonHeight > viewportHeight + window.scrollY) {
-          buttonTop = Math.max(10, rect.top + window.scrollY - buttonHeight - 10);
-        }
-        
-        // 确保按钮位置有效
-        buttonLeft = Math.max(0, buttonLeft);
-        buttonTop = Math.max(0, buttonTop);
-        
-        actionButtons.style.left = buttonLeft + 'px';
-        actionButtons.style.top = buttonTop + 'px';
-        
-        // 强制重绘以确保按钮显示
-        actionButtons.style.opacity = '1';
-      }
-
-      // 处理确认
-      function handleConfirm(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        
-        if (selectedElement) {
-          const elementInfo = getElementInfo(selectedElement);
-          window.parent.postMessage({
-            type: 'elementSelected',
-            elementInfo: elementInfo
-          }, '*');
-          
-          cleanup();
-        }
-      }
-
-      // 处理取消
-      function handleCancel(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        cleanup();
-      }
-
-      // 清理函数
-      function cleanup() {
-        selectedElement = null;
-        selectionOverlay.style.display = 'none';
-        actionButtons.style.display = 'none';
-        selectionOverlay.style.border = '2px dashed #1890ff';
-        selectionOverlay.style.backgroundColor = 'rgba(24, 144, 255, 0.1)';
-      }
-
-      // 获取元素信息
-      function getElementInfo(element) {
-        const info = {
-          tag: element.tagName.toLowerCase(),
-          id: element.id || '',
-          class: element.className || '',
-          text: element.textContent?.trim().substring(0, 50) || '',
-          type: element.type || ''
-        };
-        
-        return \`\${info.tag}\${info.id ? '#' + info.id : ''}\${info.class ? '.' + info.class.replace(/\\\\s+/g, '.') : ''} \${info.text ? '文本: ' + info.text : ''}\${info.type ? '类型: ' + info.type : ''}\`.trim();
-      }
-
-      // 初始化
-      function init() {
-        createSelectionOverlay();
-        createActionButtons();
-        
-        document.addEventListener('mousemove', handleElementHover);
-        document.addEventListener('click', handleElementClick);
-      }
-
-      // 清理事件监听器
-      function destroy() {
-        isEditModeActive = false;
-        document.removeEventListener('mousemove', handleElementHover);
-        document.removeEventListener('click', handleElementClick);
-        
-        if (selectionOverlay && selectionOverlay.parentNode) {
-          selectionOverlay.parentNode.removeChild(selectionOverlay);
-        }
-        
-        if (actionButtons && actionButtons.parentNode) {
-          actionButtons.parentNode.removeChild(actionButtons);
-        }
-      }
-
-      // 启动编辑模式
-      init();
-
-      // 存储销毁函数以便后续调用
-      window.__editModeDestroy = destroy;
-    })();
-  `
-
-  try {
-    // 等待 iframe 加载完成
-    iframe.onload = function () {
-      const iframeDoc =
-        iframe.contentDocument || (iframe.contentWindow ? iframe.contentWindow.document : null)
-      if (iframeDoc) {
-        const script = iframeDoc.createElement('script')
-        script.textContent = scriptContent
-        iframeDoc.head.appendChild(script)
-        message.success('已进入编辑模式')
-      }
-    }
-
-    // 如果 iframe 已经加载，立即注入
-    if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-      const iframeDoc = iframe.contentDocument
-      const script = iframeDoc.createElement('script')
-      script.textContent = scriptContent
-      iframeDoc.head.appendChild(script)
-      message.success('已进入编辑模式')
-    }
-  } catch (error) {
-    console.error('注入脚本失败:', error)
-    message.error('注入脚本失败')
-  }
-}
-
-// 从 iframe 移除编辑脚本
-const removeEditScriptFromIframe = () => {
-  const iframe = document.querySelector('iframe')
-  if (!iframe) return
-
-  try {
-    const iframeWindow = iframe.contentWindow as IframeWindow
-    if (iframeWindow && iframeWindow.__editModeDestroy) {
-      iframeWindow.__editModeDestroy()
-      message.info('已退出编辑模式')
-    }
-  } catch (error) {
-    console.error('移除脚本失败:', error)
-  }
-}
 </script>
 
 <style scoped>
