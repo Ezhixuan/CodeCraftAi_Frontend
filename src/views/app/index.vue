@@ -6,8 +6,8 @@
       :app-id="appId"
       :is-owner="isOwner"
       :edit-mode="isEditMode"
+      :edit-mode-loading="editModeLoading"
       @logoMouseOver="handleLogoMouseOver"
-      @startEditMode="handleStartEditMode"
       @update:editMode="handleEditModeUpdate"
     />
     <div class="code-message-container" :key="contentKey">
@@ -299,6 +299,7 @@ const downloadLoading = ref(false)
 const isVisibleOfDrawer = ref(false)
 const newMessage = ref('')
 const isEditMode = ref(false)
+const editModeLoading = ref(false)
 
 const messageListRef = ref<HTMLElement | null>(null)
 const navKey = ref('0')
@@ -403,48 +404,47 @@ const handleLogoMouseLeave = () => {
   isVisibleOfDrawer.value = false
 }
 
-const handleStartEditMode = () => {
-  if (isEditMode.value) {
-    injectEditScriptToIframe()
-  } else {
-    clearEditMode()
-  }
-}
-
-const handleEditModeUpdate = (mode: boolean) => {
-  isEditMode.value = mode
-  if (isEditMode.value) {
-    injectEditScriptToIframe()
+const handleEditModeUpdate = () => {
+  if (!isEditMode.value) {
+    startEditMode()
   } else {
     clearEditMode()
   }
 }
 
 const startEditMode = async () => {
+  message.info('请稍等，正在切换到编辑模式...')
   editModeLoading.value = true
   try {
-    await injectEditScriptToIframe()
+    setTimeout(() => {
+      injectEditScriptToIframe()
+    }, 10000)
   } finally {
     editModeLoading.value = false
+    isEditMode.value = true
   }
 }
 
 const clearEditMode = () => {
-  isEditMode.value = false
-  removeEditScriptFromIframe()
-  clearElementSelection()
+  try {
+    removeEditScriptFromIframe()
+    clearElementSelection()
 
-  if (previewUrl.value && appId.value) {
-    const currentUrl = previewUrl.value
-    // 先设置为空，触发iframe卸载
-    previewUrl.value = ''
+    if (previewUrl.value && appId.value) {
+      const currentUrl = previewUrl.value
+      // 先设置为空，触发iframe卸载
+      previewUrl.value = ''
 
-    // 使用nextTick确保DOM更新完成后再设置新URL
-    nextTick(() => {
-      const baseUrl = currentUrl.split('?')[0]
-      const timestamp = Date.now()
-      previewUrl.value = `${baseUrl}?t=${timestamp}&reload=true`
-    })
+      // 使用nextTick确保DOM更新完成后再设置新URL
+      nextTick(() => {
+        const baseUrl = currentUrl.split('?')[0]
+        const timestamp = Date.now()
+        previewUrl.value = `${baseUrl}?t=${timestamp}&reload=true`
+        message.success('已退出编辑模式')
+      })
+    }
+  } finally {
+    isEditMode.value = false
   }
 }
 
