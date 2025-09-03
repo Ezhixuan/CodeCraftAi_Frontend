@@ -13,6 +13,8 @@ interface ElementInfo {
   textContent: string
   selector: string
   pagePath: string
+  currentUrl: string
+  routePath: string
   rect: {
     top: number
     left: number
@@ -71,6 +73,22 @@ export function useIframe() {
       pagePath = '';
     }
 
+    // 获取完整的当前页面URL
+    const currentUrl = window.location.href;
+    
+    // 解析hash中的路由信息
+    const hash = window.location.hash;
+    let routePath = '';
+    if (hash) {
+      // 移除#符号并获取路由路径
+      routePath = hash.substring(1);
+      // 如果有查询参数，移除它们
+      const queryIndex = routePath.indexOf('?');
+      if (queryIndex !== -1) {
+        routePath = routePath.substring(0, queryIndex);
+      }
+    }
+
     return {
       tagName: element.tagName,
       id: element.id,
@@ -78,6 +96,8 @@ export function useIframe() {
       textContent: element.textContent ? element.textContent.trim().substring(0, 100) : '',
       selector: generateSelector(element),
       pagePath: pagePath,
+      currentUrl: currentUrl,
+      routePath: routePath,
       rect: {
         top: rect.top,
         left: rect.left,
@@ -270,8 +290,17 @@ export function useIframe() {
   const handleIframeMessage = (event: MessageEvent) => {
     if (event.data.type === 'ELEMENT_SELECTED') {
       const elementInfo = event.data.data.elementInfo as ElementInfo
+      console.log('路由', elementInfo.pagePath, elementInfo.routePath)
+      const routeInfo = '路由: ' + elementInfo.routePath || '未知'
+
       const infoStr =
-        `${elementInfo.tagName}${elementInfo.id ? '#' + elementInfo.id : ''}${elementInfo.className ? '.' + elementInfo.className.replace(/\s+/g, '.') : ''} ${elementInfo.textContent ? '文本: ' + elementInfo.textContent.substring(0, 50) : ''} ${elementInfo.selector ? '选择器: ' + elementInfo.selector : ''}`.trim()
+        `${routeInfo} \n` +
+        `
+         ${elementInfo.tagName}
+         ${elementInfo.id ? '#' + elementInfo.id : ''}
+         ${elementInfo.className ? '.' + elementInfo.className.replace(/\s+/g, '.') : ''} 
+         ${elementInfo.textContent ? '文本: ' + elementInfo.textContent.substring(0, 50) : ''} 
+         ${elementInfo.selector ? '选择器: ' + elementInfo.selector : ''}`
       selectedElementInfo.value = infoStr
     }
   }
