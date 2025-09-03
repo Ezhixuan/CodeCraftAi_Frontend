@@ -420,6 +420,15 @@ const handleEditModeUpdate = (mode: boolean) => {
   }
 }
 
+const startEditMode = async () => {
+  editModeLoading.value = true
+  try {
+    await injectEditScriptToIframe()
+  } finally {
+    editModeLoading.value = false
+  }
+}
+
 const clearEditMode = () => {
   isEditMode.value = false
   removeEditScriptFromIframe()
