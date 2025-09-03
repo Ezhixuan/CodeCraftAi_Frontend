@@ -91,9 +91,14 @@
       </div>
 
       <div class="right-section" v-if="isOwnerCurr">
-        <a-button type="primary" @click="startEditMode" class="edit-button">
+        <a-button 
+          :type="editMode ? 'default' : 'primary'" 
+          :danger="editMode"
+          @click="startEditMode" 
+          class="edit-button"
+        >
           <template #icon><EditOutlined /></template>
-          编辑模式
+          {{ editMode ? '退出编辑' : '编辑模式' }}
         </a-button>
       </div>
     </div>
@@ -121,10 +126,11 @@ const props = defineProps<{
   appId?: string
   sysAppInfo?: API.AppInfoCommonResVo
   isOwner?: boolean
+  editMode?: boolean
 }>()
 
 // MODIFIED: Define the events that this component can emit
-const emit = defineEmits(['logoMouseOver', 'logoMouseLeave', 'startEditMode'])
+const emit = defineEmits(['logoMouseOver', 'logoMouseLeave', 'startEditMode', 'update:editMode'])
 
 // --- State and Refs ---
 const router = useRouter()
@@ -302,6 +308,7 @@ const goHome = () => {
 }
 
 const startEditMode = () => {
+  emit('update:editMode', !props.editMode)
   emit('startEditMode')
 }
 

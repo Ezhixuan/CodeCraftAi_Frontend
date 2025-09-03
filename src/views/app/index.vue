@@ -5,8 +5,10 @@
       :sys-app-info="appInfo"
       :app-id="appId"
       :is-owner="isOwner"
+      :edit-mode="isEditMode"
       @logoMouseOver="handleLogoMouseOver"
       @startEditMode="handleStartEditMode"
+      @update:editMode="handleEditModeUpdate"
     />
     <div class="code-message-container" :key="contentKey">
       <AppDrawer
@@ -79,6 +81,18 @@
               </div>
 
               <div v-if="isOwner" class="chat-input-area">
+                <!-- 选中元素信息提示框 -->
+                <a-alert
+                  v-if="selectedElementInfo"
+                  :message="'已选中的元素'"
+                  :description="selectedElementInfo"
+                  type="info"
+                  show-icon
+                  closable
+                  @close="clearElementSelection"
+                  class="element-info-alert"
+                />
+
                 <Input
                   v-model="newMessage"
                   fontSize="16px"
@@ -111,6 +125,7 @@
                   </a-button>
                   <!-- 预览按钮 -->
                   <a-button
+                    v-if="isOwner"
                     type="primary"
                     :loading="previewLoading || appStatus.previewStatus === 'LOADING'"
                     @click="handlePreviewClick"
@@ -129,10 +144,15 @@
 
                   <!-- 部署按钮 -->
                   <a-button
+                    v-if="isOwner"
                     type="default"
                     :loading="appStatus.loading && appStatus.deployStatus === 'LOADING'"
                     @click="handleDeployClick"
-                    :disabled="!isOwner || appStatus.previewStatus === 'LOADING'"
+                    :disabled="
+                      appStatus.previewStatus === 'LOADING' ||
+                      appStatus.originalDirStatus !== 'LOADED' ||
+                      !isOwner
+                    "
                     size="small"
                   >
                     {{
@@ -262,8 +282,9 @@ const {
   selectedElementInfo,
   injectEditScriptToIframe,
   removeEditScriptFromIframe,
+  clearSelection,
   addMessageListener,
-  removeMessageListener
+  removeMessageListener,
 } = useIframe()
 
 // 下载状态
@@ -381,8 +402,23 @@ const handleStartEditMode = () => {
   if (isEditMode.value) {
     injectEditScriptToIframe()
   } else {
-    removeEditScriptFromIframe()
+    clearEditMode()
   }
+}
+
+const handleEditModeUpdate = (mode: boolean) => {
+  isEditMode.value = mode
+  if (isEditMode.value) {
+    injectEditScriptToIframe()
+  } else {
+    clearEditMode()
+  }
+}
+
+const clearEditMode = () => {
+  isEditMode.value = false
+  removeEditScriptFromIframe()
+  clearElementSelection()
 }
 
 useInfiniteScroll(
@@ -667,6 +703,14 @@ const sendMessage = async () => {
 }
 
 /**
+ * 清除元素选择
+ */
+const clearElementSelection = () => {
+  selectedElementInfo.value = ''
+  clearSelection()
+}
+
+/**
  * 复制文本
  * @param text 要复制的文本
  */
@@ -766,6 +810,9 @@ const loadAppData = async (appId: string) => {
   // 等待 50ms
   await new Promise((resolve) => setTimeout(resolve, 50))
   loadHistoryCount.value += 1
+  if (appStatus.previewStatus === 'LOADED' && appStatus.originalDirStatus === 'LOADED') {
+    await handlePreview(appId, false)
+  }
 }
 
 // 监听 appId 变化，处理应用切换
@@ -788,10 +835,8 @@ onUnmounted(() => {
   removeMessageListener()
 })
 
-
 // 添加消息监听器
 addMessageListener()
-
 </script>
 
 <style scoped>
@@ -1000,6 +1045,26 @@ addMessageListener()
   padding: 16px;
   border-top: 1px solid #e0e0e0;
   background: #ffffff;
+}
+
+.element-info-alert {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.element-info-alert :deep(.ant-alert-message) {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1890ff;
+}
+
+.element-info-alert :deep(.ant-alert-description) {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #595959;
+  word-break: break-all;
+  margin-top: 4px;
 }
 
 /* Preview Area */
