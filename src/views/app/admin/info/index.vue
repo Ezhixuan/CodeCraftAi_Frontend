@@ -50,9 +50,7 @@
     <!-- 操作按钮 -->
     <template #actions>
       <a-space>
-        <a-button type="primary" @click="refreshList">
-          <ReloadOutlined /> 刷新
-        </a-button>
+        <a-button type="primary" @click="refreshList"> <ReloadOutlined /> 刷新 </a-button>
       </a-space>
     </template>
 
@@ -356,7 +354,7 @@ const editForm = reactive<API.AppUpdateAdminReqVo>({
   priority: undefined,
 })
 
-let enumStore = useEnumStore()
+const enumStore = useEnumStore()
 
 /**
  * 获取代码生成类型列表

@@ -19,7 +19,13 @@ export function usePreview() {
     try {
       const response = await getAppPreviewUrl({ appId: previewAppId, reBuild: reBuild })
       if (response.data.data) {
-        url.value = response.data.data
+        // 将绝对URL转换为相对路径，使用代理避免跨域问题
+        const fullUrl = response.data.data
+        if (fullUrl.startsWith('http://localhost:8911')) {
+          url.value = fullUrl.replace('http://localhost:8911', '')
+        } else {
+          url.value = fullUrl
+        }
         preview.value = true
         message.success('预览生成成功！')
       }

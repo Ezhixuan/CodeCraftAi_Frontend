@@ -89,6 +89,13 @@
           </div>
         </div>
       </div>
+
+      <div class="right-section" v-if="isOwnerCurr">
+        <a-button type="primary" @click="startEditMode" class="edit-button">
+          <template #icon><EditOutlined /></template>
+          编辑模式
+        </a-button>
+      </div>
     </div>
   </div>
 </template>
@@ -104,6 +111,7 @@ import {
   NodeIndexOutlined,
   FileOutlined,
   BugOutlined,
+  EditOutlined,
 } from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
 import { useLoginUserStore } from '@/stores/loginUser'
@@ -116,7 +124,7 @@ const props = defineProps<{
 }>()
 
 // MODIFIED: Define the events that this component can emit
-const emit = defineEmits(['logoMouseOver', 'logoMouseLeave'])
+const emit = defineEmits(['logoMouseOver', 'logoMouseLeave', 'startEditMode'])
 
 // --- State and Refs ---
 const router = useRouter()
@@ -289,16 +297,12 @@ const getCodeGenTypeConfig = (codeGenType?: string) => {
   )
 }
 
-const editApp = () => {
-  router.push(`/app/edit/${props.appId}`)
-}
-
-const viewApp = () => {
-  message.info('您正在查看他人创建的应用')
-}
-
 const goHome = () => {
   router.push('/')
+}
+
+const startEditMode = () => {
+  emit('startEditMode')
 }
 
 const handleLogoMouseOver = () => {
@@ -451,5 +455,14 @@ const handleLogoMouseOver = () => {
   word-break: break-all;
   text-align: right;
   max-width: 150px;
+}
+
+.right-section {
+  display: flex;
+  align-items: center;
+}
+
+.edit-button {
+  margin-left: 16px;
 }
 </style>
