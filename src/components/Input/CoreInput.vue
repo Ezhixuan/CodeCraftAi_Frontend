@@ -127,7 +127,7 @@
       <!-- 提交按钮 -->
       <template v-if="showSubmitButton" #footer-right>
         <button
-          :class="['submit-button', { 'disabled': required && !currentValue }]"
+          :class="['submit-button', { disabled: required && !currentValue }]"
           :disabled="disabled || (required && !currentValue)"
           @click="handleSubmit"
         >
@@ -162,9 +162,9 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { computed } from 'vue'
-import CoreInput from '@/components/Input/CoreInput/index.vue'
-import FeatureTools from '@/components/Input/FeatureTool/index.vue'
-import PromptsArea from './PromptsArea/index.vue'
+import CoreInput from '@/components/Input/InputTool.vue'
+import FeatureTools from '@/components/Input/FeatureTool.vue'
+import PromptsArea from '@/components/Input/PromptsTool.vue'
 
 // 定义接口
 interface PresetPrompt {
@@ -281,7 +281,7 @@ const props = withDefaults(defineProps<Props>(), {
   presetPromptsSubtitle: '选择一个预设提示词快速开始',
   presetPromptsMaxColumns: 3,
   presetPromptsMinHeight: '32px',
-  presetPromptsMaxHeight: '200px'
+  presetPromptsMaxHeight: '200px',
 })
 
 // 定义Emits事件

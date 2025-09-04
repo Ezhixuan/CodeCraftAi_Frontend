@@ -1,16 +1,19 @@
-<template>
+<template name="AppIndex">
   <div class="code-message-view" :key="navKey">
+    <!-- 导航栏区域 -->
     <AppNavBar
       v-if="appId && appInfo"
       :sys-app-info="appInfo"
       :app-id="appId"
       :is-owner="isOwner"
       :edit-mode="isEditMode"
-      :edit-mode-loading="editModeLoading"
-      @logoMouseOver="handleLogoMouseOver"
+      :edit-mode-loading="editModeLoading || injectionState.isInjecting"
+      @logo-mouse-over="handleLogoMouseOver"
       @update:editMode="handleEditModeUpdate"
     />
+    <!-- 主内容区域 -->
     <div class="code-message-container" :key="contentKey">
+      <!-- 抽屉区域 -->
       <AppDrawer
         :visible="isVisibleOfDrawer"
         @close="handleLogoMouseLeave"
@@ -250,10 +253,11 @@ import {
 } from '@ant-design/icons-vue'
 import { useInfiniteScroll } from '@vueuse/core'
 import AppNavBar from '@/views/app/components/AppNavBar.vue'
-import MarkdownReader from '@/components/Markdown/index.vue'
-import Input from '@/components/Input/index.vue'
+import MarkdownReader from '@/components/Markdown/MarkDownReader.vue'
+import Input from '@/components/Input/CoreInput.vue'
 import AppDrawer from '@/views/app/components/AppDrawer.vue'
-import UserAvatar from '@/components/User/Avatar/index.vue'
+
+import UserAvatar from '@/components/User/UserAvatar.vue'
 import { getBaseUrl } from '@/config/env.ts'
 import DateUtil from '@/utils/DateUtil.ts'
 import { putAppDeploy } from '@/api/appCoreController.ts'
@@ -290,6 +294,7 @@ const {
   clearSelection,
   addMessageListener,
   removeMessageListener,
+  injectionState,
 } = useIframe()
 
 // 下载状态
@@ -415,12 +420,13 @@ const startEditMode = async () => {
   message.info('请稍等，正在切换到编辑模式...')
   editModeLoading.value = true
   try {
-    setTimeout(() => {
-      injectEditScriptToIframe()
-    }, 10000)
+    await injectEditScriptToIframe()
+    isEditMode.value = true
+  } catch (error) {
+    message.error('进入编辑模式失败，请重试')
+    console.error('Edit mode injection failed:', error)
   } finally {
     editModeLoading.value = false
-    isEditMode.value = true
   }
 }
 
@@ -444,6 +450,7 @@ const clearEditMode = () => {
     }
   } finally {
     isEditMode.value = false
+    injectionState.isInjected = false
   }
 }
 

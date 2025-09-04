@@ -250,25 +250,6 @@ import type { TableColumnsType, TableProps, FormInstance } from 'ant-design-vue'
 import { useEnumStore } from '@/stores/enum.ts'
 import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
 
-// 代码生成类型列表
-const codeGenTypeList = ref<API.KeyValueResVo[]>([])
-
-// 搜索表单
-const searchForm = reactive<API.AppQueryReqVo>({
-  pageNo: 1,
-  pageSize: 10,
-  orderBy: 'desc',
-  id: undefined,
-  name: undefined,
-  codeGenType: undefined,
-  userId: undefined,
-})
-
-// 应用列表数据
-const appList = ref<API.AppInfoAdminResVo[]>([])
-const loading = ref(false)
-const total = ref(0)
-
 // 分页配置
 const pagination = computed(() => ({
   current: searchForm.pageNo,
@@ -338,11 +319,24 @@ const columns: TableColumnsType = [
   },
 ]
 
-// 应用详情
+// 搜索表单
+const searchForm = reactive<API.AppQueryReqVo>({
+  pageNo: 1,
+  pageSize: 10,
+  orderBy: 'desc',
+  id: undefined,
+  name: undefined,
+  codeGenType: undefined,
+  userId: undefined,
+})
+
+// 代码生成类型列表
+const codeGenTypeList = ref<API.KeyValueResVo[]>([])
+const appList = ref<API.AppInfoAdminResVo[]>([])
+const loading = ref(false)
+const total = ref(0)
 const appDetailVisible = ref(false)
 const currentApp = ref<API.AppInfoAdminResVo | null>(null)
-
-// 编辑应用
 const editAppVisible = ref(false)
 const updateLoading = ref(false)
 const editFormRef = ref<FormInstance>()
@@ -356,16 +350,12 @@ const editForm = reactive<API.AppUpdateAdminReqVo>({
 
 const enumStore = useEnumStore()
 
-/**
- * 获取代码生成类型列表
- */
-const getCodeGenTypes = async () => {
-  try {
-    codeGenTypeList.value = await enumStore.loadCodeGenTypeList()
-  } catch (error) {
-    console.error('获取代码生成类型失败:', error)
-  }
-}
+// 页面初始化
+onMounted(() => {
+  getAppList()
+  enumStore.loadCodeGenTypeList()
+  codeGenTypeList.value = enumStore.codeGenTypeList
+})
 
 /**
  * 获取应用列表
@@ -508,12 +498,6 @@ const getPriorityColor = (priority?: number) => {
       return 'default'
   }
 }
-
-// 页面初始化
-onMounted(() => {
-  getAppList()
-  getCodeGenTypes()
-})
 </script>
 
 <style scoped>

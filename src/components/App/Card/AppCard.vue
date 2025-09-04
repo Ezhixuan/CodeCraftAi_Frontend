@@ -98,12 +98,7 @@
       <div class="info-left">
         <h4 class="info-title">{{ appInfo?.name || '未命名应用' }}</h4>
         <div v-if="appInfo?.userInfo" class="info-user">
-          <UserAvatar
-            :user-info="appInfo.userInfo"
-            show-name
-            size="small"
-            name-color="#ffffff"
-          />
+          <UserAvatar :user-info="appInfo.userInfo" show-name size="small" name-color="#ffffff" />
           <span v-if="appInfo.updateTime" class="update-time">
             更新于 {{ formatUpdateTime(appInfo.updateTime) }}
           </span>
@@ -125,17 +120,13 @@
 </template>
 
 <script setup lang="ts">
-import UserAvatar from '../../User/Avatar/index.vue'
+import UserAvatar from '../../User/UserAvatar.vue'
 
-interface Props {
-  appInfo?: API.AppInfoCommonResVo
-  interactive?: boolean
-  actionText?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  interactive: false,
-})
+defineProps<{
+  appInfo: API.AppInfoCommonResVo
+  interactive: boolean
+  actionText: string
+}>()
 
 const emit = defineEmits<{
   action: []

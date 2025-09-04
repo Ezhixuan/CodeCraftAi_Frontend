@@ -90,9 +90,9 @@ import { getAppList, getFeaturedAppList } from '@/api/appController.ts'
 import { postAppInfo } from '@/api/appCoreController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import router from '@/router'
-import Input from '@/components/Input/index.vue'
-import AppCard from '@/components/App/Card/index.vue'
-import CommonBackground from '@/components/Background/Common/index.vue'
+import Input from '@/components/Input/CoreInput.vue'
+import AppCard from '@/components/App/Card/AppCard.vue'
+import CommonBackground from '@/components/Background/CommonBackground.vue'
 
 // 登录用户状态
 const loginUserStore = useLoginUserStore()

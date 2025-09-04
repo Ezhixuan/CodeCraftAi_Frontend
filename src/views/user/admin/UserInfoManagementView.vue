@@ -268,7 +268,7 @@ import {
   adminDisable,
   adminGetList,
 } from '@/api/userController.ts'
-import UserAvatar from '@/components/User/Avatar/index.vue'
+import UserAvatar from '@/components/User/UserAvatar.vue'
 import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
 import { useEnumStore } from '@/stores/enum.ts'
 

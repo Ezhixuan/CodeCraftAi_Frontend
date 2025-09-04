@@ -235,39 +235,92 @@ export function useIframe() {
 `
   }
 
+  // 注入状态管理
+  const injectionState = ref({
+    isInjecting: false,
+    isInjected: false,
+    injectionPromise: null as Promise<void> | null
+  })
+
   // 注入编辑脚本到 iframe
-  const injectEditScriptToIframe = () => {
+  const injectEditScriptToIframe = (): Promise<void> => {
+    // 防止重复注入
+    if (injectionState.value.isInjecting) {
+      return injectionState.value.injectionPromise!
+    }
+    
+    if (injectionState.value.isInjected) {
+      return Promise.resolve()
+    }
+
     const iframe = document.querySelector('iframe') as HTMLIFrameElement
     if (!iframe) {
       message.error('未找到 iframe')
-      return
+      return Promise.reject(new Error('未找到 iframe'))
     }
 
-    try {
-      // 等待 iframe 加载完成
-      iframe.onload = function () {
-        const iframeDoc =
-          iframe.contentDocument || (iframe.contentWindow ? iframe.contentWindow.document : null)
-        if (iframeDoc) {
+    injectionState.value.isInjecting = true
+
+    const injectionPromise = new Promise<void>((resolve, reject) => {
+      const maxWaitTime = 10000 // 最大等待10秒
+      const checkInterval = 50 // 每50ms检查一次
+      let elapsedTime = 0
+
+      const tryInject = () => {
+        try {
+          // 确保iframe内容可访问
+          if (!iframe.contentWindow || !iframe.contentDocument) {
+            throw new Error('无法访问iframe内容')
+          }
+
+          const iframeDoc = iframe.contentDocument
+          const iframeWindow = iframe.contentWindow as IframeWindow
+
+          // 检查是否已经注入过（避免重复）
+          if (iframeWindow.__editModeDestroy || iframeDoc.getElementById('edit-mode-styles')) {
+            injectionState.value.isInjected = true
+            injectionState.value.isInjecting = false
+            message.info('编辑模式已激活')
+            resolve()
+            return
+          }
+
+          // 等待文档准备就绪
+          if (iframeDoc.readyState === 'loading') {
+            elapsedTime += checkInterval
+            if (elapsedTime >= maxWaitTime) {
+              injectionState.value.isInjecting = false
+              reject(new Error('iframe加载超时'))
+              return
+            }
+            setTimeout(tryInject, checkInterval)
+            return
+          }
+
+          // 执行注入
           const script = iframeDoc.createElement('script')
           script.textContent = getEditModeScript()
+          script.id = 'edit-mode-script'
           iframeDoc.head.appendChild(script)
+
+          injectionState.value.isInjected = true
+          injectionState.value.isInjecting = false
           message.success('已进入编辑模式')
+          resolve()
+        } catch (error) {
+          injectionState.value.isInjecting = false
+          console.error('注入脚本失败:', error)
+          message.error('注入脚本失败')
+          reject(error)
         }
       }
 
-      // 如果 iframe 已经加载，立即注入
-      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-        const iframeDoc = iframe.contentDocument
-        const script = iframeDoc.createElement('script')
-        script.textContent = getEditModeScript()
-        iframeDoc.head.appendChild(script)
-        message.success('已进入编辑模式')
-      }
-    } catch (error) {
-      console.error('注入脚本失败:', error)
-      message.error('注入脚本失败')
-    }
+      // 立即尝试注入，如果失败则等待
+      tryInject()
+    })
+
+    injectionState.value.injectionPromise = injectionPromise
+    return injectionPromise
   }
 
   // 从 iframe 移除编辑脚本
@@ -279,6 +332,8 @@ export function useIframe() {
       const iframeWindow = iframe.contentWindow as IframeWindow
       if (iframeWindow && iframeWindow.__editModeDestroy) {
         iframeWindow.__editModeDestroy()
+        injectionState.value.isInjected = false
+        injectionState.value.isInjecting = false
         message.info('已退出编辑模式')
       }
     } catch (error) {
@@ -362,5 +417,6 @@ export function useIframe() {
     clearAllEffects,
     addMessageListener,
     removeMessageListener,
+    injectionState: injectionState.value,
   }
 }

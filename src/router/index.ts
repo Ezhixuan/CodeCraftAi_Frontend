@@ -6,13 +6,13 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('@/views/index.vue'),
+      component: () => import('@/views/HomeView.vue'),
     },
     // 代码生成和预览页面
     {
       path: '/App/code-message',
       name: 'code-message',
-      component: () => import('@/views/app/index.vue'),
+      component: () => import('@/views/app/AppChatView.vue'),
       meta: {
         hideLayout: true,
         keepAlive: false,
@@ -21,18 +21,18 @@ const router = createRouter({
     {
       path: '/auth/login',
       name: 'auth-login',
-      component: () => import('@/views/user/auth/index.vue'),
+      component: () => import('@/views/user/auth/components/LoginAndRegisterForm.vue'),
     },
     {
       path: '/auth/register',
       name: 'auth-register',
-      component: () => import('@/views/user/auth/index.vue'),
+      component: () => import('@/views/user/auth/components/LoginAndRegisterForm.vue'),
     },
     // 用户个人信息页面
     {
       path: '/user/profile',
       name: 'user-profile',
-      component: () => import('@/views/user/index.vue'),
+      component: () => import('@/views/user/auth/UserAuthView.vue'),
       meta: {
         requiresAuth: true,
       },
@@ -41,7 +41,7 @@ const router = createRouter({
     {
       path: '/admin/users',
       name: 'admin-users',
-      component: () => import('@/views/user/admin/index.vue'),
+      component: () => import('@/views/user/admin/UserInfoManagementView.vue'),
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
@@ -51,7 +51,7 @@ const router = createRouter({
     {
       path: '/admin/apps',
       name: 'admin-apps',
-      component: () => import('@/views/app/admin/info/index.vue'),
+      component: () => import('@/views/app/admin/info/AppInfoManagementView.vue'),
       meta: {
         requiresAuth: true,
         requiresAdmin: true,
@@ -61,7 +61,7 @@ const router = createRouter({
     {
       path: '/admin/chat-history',
       name: 'admin-chat-history',
-      component: () => import('@/views/app/admin/chat/index.vue'),
+      component: () => import('@/views/app/admin/chat/AppChatManagementView.vue'),
       meta: {
         requiresAuth: true,
         requiresAdmin: true,

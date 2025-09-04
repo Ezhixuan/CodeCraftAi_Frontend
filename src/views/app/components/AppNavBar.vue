@@ -20,7 +20,7 @@
           <div v-else-if="appInfo" class="info-display">
             <div class="app-name-container">
               <a-input
-                v-if="isEditing && isOwnerCurr"
+                v-if="isEditing && isOwner"
                 v-model:value="editingName"
                 @blur="saveAppName"
                 @pressEnter="saveAppName"
@@ -29,7 +29,7 @@
                 :maxlength="50"
                 ref="nameInputRef"
               />
-              <span v-else class="app-name" :class="{ editable: isOwnerCurr }" @click="startEdit">
+              <span v-else class="app-name" :class="{ editable: isOwner }" @click="startEdit">
                 {{ appInfo.name }}
               </span>
               <!-- 代码生成类型彩色标签 -->
@@ -43,46 +43,10 @@
                 </template>
                 {{ getCodeGenTypeConfig(appInfo.codeGenType).label }}
               </a-tag>
-              <span v-if="isOwnerCurr" class="owner-tag">我的应用</span>
+              <span v-if="isOwner" class="owner-tag">我的应用</span>
             </div>
 
-            <a-popover title="应用信息" trigger="hover" placement="bottomLeft">
-              <template #content>
-                <div class="app-info-popover">
-                  <div class="info-item">
-                    <span class="label">应用ID：</span>
-                    <span class="value">{{ appInfo.id }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">创建时间：</span>
-                    <span class="value">{{ formatDate(appInfo.createTime) }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">更新时间：</span>
-                    <span class="value">{{ formatDate(appInfo.updateTime) }}</span>
-                  </div>
-                  <div v-if="appInfo.deployTime" class="info-item">
-                    <span class="label">部署时间：</span>
-                    <span class="value">{{ formatDate(appInfo.deployTime) }}</span>
-                  </div>
-                  <div v-if="appInfo.userInfo" class="info-item">
-                    <span class="label">创建者：</span>
-                    <span class="value">{{
-                      appInfo.userInfo.name || appInfo.userInfo.account
-                    }}</span>
-                  </div>
-                  <div v-if="appInfo.codeGenType" class="info-item">
-                    <span class="label">代码类型：</span>
-                    <span class="value">{{ formatCodeGenType(appInfo.codeGenType) }}</span>
-                  </div>
-                </div>
-              </template>
-              <a-button type="text" size="small" class="info-button">
-                <template #icon>
-                  <InfoCircleOutlined />
-                </template>
-              </a-button>
-            </a-popover>
+            <AppInfoPopover :app-info="appInfo" />
           </div>
           <div v-else class="info-placeholder">
             <span>无法加载应用信息</span>
@@ -90,7 +54,7 @@
         </div>
       </div>
 
-      <div class="right-section" v-if="isOwnerCurr">
+      <div class="right-section" v-if="isOwner">
         <a-button
           :type="editMode ? 'default' : 'primary'"
           :loading="editModeLoading"
@@ -107,73 +71,64 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
-import { getAppInfo, putAppUpdate } from '@/api/appController.ts'
+import { ref, onMounted, nextTick, computed } from 'vue'
+import { putAppUpdate } from '@/api/appController.ts'
 import { message } from 'ant-design-vue'
-import {
-  InfoCircleOutlined,
-  CodeOutlined,
-  Html5Outlined,
-  NodeIndexOutlined,
-  FileOutlined,
-  BugOutlined,
-  EditOutlined,
-} from '@ant-design/icons-vue'
+import { CodeOutlined, Html5Outlined, EditOutlined } from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
 import { useLoginUserStore } from '@/stores/loginUser'
+import { useEnumStore } from '@/stores/enum'
+import AppInfoPopover from '@/views/app/components/AppInfoPopover.vue'
 
-// --- Props and Emits ---
+const router = useRouter()
+const loginUser = useLoginUserStore()
+const enumStore = useEnumStore()
+const loading = ref(false)
+const isEditing = ref(false)
+const editingName = ref('')
+const nameInputRef = ref()
+const isOwner = computed(() => {
+  return props.sysAppInfo.userId === loginUser.loginUser.id
+})
+const appInfo = computed(() => {
+  return props.sysAppInfo
+})
+const appId = computed(() => {
+  return props.sysAppInfo.id
+})
+
+// 定义组件属性
 const props = defineProps<{
-  appId?: string
-  sysAppInfo?: API.AppInfoCommonResVo
-  isOwner?: boolean
+  sysAppInfo: API.AppInfoCommonResVo
   editMode?: boolean
   editModeLoading?: boolean
 }>()
 
-// MODIFIED: Define the events that this component can emit
-const emit = defineEmits(['logoMouseOver', 'logoMouseLeave', 'update:editMode'])
+// 定义事件
+const emit = defineEmits<{
+  (e: 'logo-mouse-over'): void
+  (e: 'update:edit-mode'): void
+}>()
 
-// --- State and Refs ---
-const router = useRouter()
-const loginUser = useLoginUserStore()
-const appInfo = ref<API.AppInfoCommonResVo | null>(null)
-const isOwnerCurr = ref<boolean | null>(null)
-const loading = ref(true)
-const isEditing = ref(false)
-const editingName = ref('')
-const nameInputRef = ref()
+const startEditMode = () => {
+  emit('update:edit-mode')
+}
 
-// --- Lifecycle Hooks ---
-onMounted(async () => {
-  loading.value = true
-  try {
-    if (props.sysAppInfo) {
-      appInfo.value = props.sysAppInfo
-    } else if (props.appId) {
-      try {
-        const response = await getAppInfo({ id: props.appId })
-        if (response.data.data) {
-          appInfo.value = response.data.data
-        }
-      } catch (error) {
-        message.error('获取应用信息失败')
-        console.error(error)
-      }
-    }
-    if (props.isOwner === null && appInfo.value) {
-      isOwnerCurr.value = appInfo.value.userId === loginUser.loginUser.id
-    } else {
-      isOwnerCurr.value = props.isOwner
-    }
-  } finally {
-    loading.value = false
-  }
+const handleLogoMouseOver = () => {
+  emit('logo-mouse-over')
+}
+
+const goHome = () => {
+  router.push('/')
+}
+
+onMounted(() => {
+  enumStore.loadCodeGenTypeList()
 })
 
 // --- Methods ---
 const startEdit = () => {
-  if (!isOwnerCurr.value) return
+  if (!isOwner.value) return
   isEditing.value = true
   editingName.value = appInfo.value?.name || ''
   nextTick(() => {
@@ -182,28 +137,34 @@ const startEdit = () => {
 }
 
 const saveAppName = async () => {
+  if (!appId.value) {
+    message.error('应用ID不能为空')
+    return
+  }
   if (!editingName.value.trim()) {
     message.error('应用名称不能为空')
     return
   }
   if (editingName.value === appInfo.value?.name) {
-    isEditing.value = false
     return
   }
+  const trimmedName = editingName.value.trim()
   try {
     const updateReq: API.AppUpdateCommonReqVo = {
-      id: props.appId!,
-      name: editingName.value.trim(),
+      id: appId.value,
+      name: trimmedName,
     }
     await putAppUpdate(updateReq)
+    editingName.value = trimmedName
     if (appInfo.value) {
-      appInfo.value.name = editingName.value.trim()
+      appInfo.value.name = trimmedName
     }
-    isEditing.value = false
     message.success('应用名称更新成功')
   } catch (error) {
     message.error('更新应用名称失败')
     console.error('更新应用名称失败:', error)
+  } finally {
+    isEditing.value = false
   }
 }
 
@@ -212,33 +173,6 @@ const cancelEdit = () => {
   editingName.value = appInfo.value?.name || ''
 }
 
-const formatDate = (dateStr?: string) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
-}
-
-/**
- * 格式化代码生成类型为用户友好的显示文本
- * @param codeGenType 代码生成类型
- * @returns 格式化后的显示文本
- */
-const formatCodeGenType = (codeGenType?: string) => {
-  if (!codeGenType) return '-'
-  const typeMap: Record<string, string> = {
-    vue_project: 'Vue项目',
-    multi_file: '多文件项目',
-    single_file: '单文件项目',
-    react_project: 'React项目',
-    html_project: 'HTML项目',
-  }
-  return typeMap[codeGenType] || codeGenType
-}
-
-/**
- * 获取代码生成类型的配置信息（颜色、图标、标签文本）
- * @param codeGenType 代码生成类型
- * @returns 包含颜色、图标和标签的配置对象
- */
 const getCodeGenTypeConfig = (codeGenType?: string) => {
   if (!codeGenType) {
     return {
@@ -254,45 +188,15 @@ const getCodeGenTypeConfig = (codeGenType?: string) => {
       icon: CodeOutlined,
       label: 'Vue',
     },
-    react_project: {
-      color: 'blue',
-      icon: CodeOutlined,
-      label: 'React',
-    },
-    angular_project: {
-      color: 'red',
-      icon: CodeOutlined,
-      label: 'Angular',
-    },
     html: {
       color: 'orange',
       icon: Html5Outlined,
       label: 'HTML',
     },
-    node_project: {
-      color: 'lime',
-      icon: NodeIndexOutlined,
-      label: 'Node.js',
-    },
-    python_project: {
-      color: 'purple',
-      icon: FileOutlined,
-      label: 'Python',
-    },
-    java_project: {
-      color: 'volcano',
-      icon: BugOutlined,
-      label: 'Java',
-    },
     multi_file: {
       color: 'cyan',
       icon: CodeOutlined,
       label: '多文件',
-    },
-    single_file: {
-      color: 'geekblue',
-      icon: CodeOutlined,
-      label: '单文件',
     },
   }
 
@@ -303,19 +207,6 @@ const getCodeGenTypeConfig = (codeGenType?: string) => {
       label: codeGenType,
     }
   )
-}
-
-const goHome = () => {
-  router.push('/')
-}
-
-const startEditMode = () => {
-  emit('update:editMode')
-  console.log('edit', props.editMode)
-}
-
-const handleLogoMouseOver = () => {
-  emit('logoMouseOver')
 }
 </script>
 <style scoped>
@@ -428,42 +319,8 @@ const handleLogoMouseOver = () => {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
-.info-button {
-  color: #666;
-  border: none;
-  box-shadow: none;
-}
-.info-button:hover {
-  color: #1890ff;
-  background-color: #f0f0f0;
-}
 .info-placeholder {
   color: #999;
-}
-
-.app-info-popover {
-  min-width: 250px;
-}
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-.info-item:last-child {
-  border-bottom: none;
-}
-.info-item .label {
-  font-weight: 500;
-  color: #666;
-  min-width: 80px;
-}
-.info-item .value {
-  color: #333;
-  word-break: break-all;
-  text-align: right;
-  max-width: 150px;
 }
 
 .right-section {

@@ -27,7 +27,7 @@
           <a-select
             v-model:value="searchForm.messageType"
             placeholder="请选择消息类型"
-            style="width: 120px"
+            style="width: 150px"
             allow-clear
           >
             <a-select-option value="user">用户消息</a-select-option>
@@ -37,7 +37,7 @@
 
         <a-form-item label="创建时间" name="dateRange">
           <a-range-picker
-            v-model:value="searchForm.dateRange"
+            v-model:value="dateRange"
             style="width: 240px"
             format="YYYY-MM-DD"
             placeholder="[开始时间, 结束时间]"
@@ -169,36 +169,8 @@ import { ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import type { Dayjs } from 'dayjs'
 import DateUtil from '@/utils/DateUtil.ts'
 import AdminPageWrapper from '@/components/AdminPageWrapper.vue'
-import MarkdownReader from '@/components/Markdown/index.vue'
+import MarkdownReader from '@/components/Markdown/MarkDownReader.vue'
 import { getChatHisListAdmin } from '@/api/chatHistoryAdminController.ts'
-
-// 搜索表单
-const searchForm = reactive<{
-  pageNo: number
-  pageSize: number
-  id?: string
-  appId?: string
-  userId?: string
-  messageType?: string
-  dateRange?: [Dayjs, Dayjs]
-  startTime?: string
-  endTime?: string
-}>({
-  pageNo: 1,
-  pageSize: 10,
-  id: undefined,
-  appId: undefined,
-  userId: undefined,
-  messageType: undefined,
-  dateRange: undefined,
-  startTime: undefined,
-  endTime: undefined,
-})
-
-// 对话历史列表数据
-const chatList = ref<API.ChatInfoResVo[]>([])
-const loading = ref(false)
-const total = ref(0)
 
 // 分页配置
 const pagination = computed(() => ({
@@ -257,6 +229,26 @@ const columns: TableColumnsType = [
   },
 ]
 
+// 搜索表单
+const searchForm = reactive<API.ChatQueryReqVo>({
+  pageNo: 1,
+  pageSize: 10,
+  id: undefined,
+  appId: undefined,
+  userId: undefined,
+  messageType: undefined,
+  startTime: undefined,
+  endTime: undefined,
+})
+
+// 日期范围选择器的值
+const dateRange = ref<[Dayjs, Dayjs] | undefined>(undefined)
+
+// 对话历史列表数据
+const chatList = ref<API.ChatInfoResVo[]>([])
+const loading = ref(false)
+const total = ref(0)
+
 // 对话详情
 const chatDetailVisible = ref(false)
 const currentChat = ref<API.ChatInfoResVo>()
@@ -267,9 +259,9 @@ const getChatList = async () => {
     loading.value = true
 
     // 处理日期范围
-    if (searchForm.dateRange && searchForm.dateRange.length === 2) {
-      searchForm.startTime = searchForm.dateRange[0].format(DateUtil.getDefaultFormat())
-      searchForm.endTime = searchForm.dateRange[1].format(DateUtil.getDefaultFormat())
+    if (dateRange.value && dateRange.value.length === 2) {
+      searchForm.startTime = dateRange.value[0].format(DateUtil.getDefaultFormat())
+      searchForm.endTime = dateRange.value[1].format(DateUtil.getDefaultFormat())
     } else {
       searchForm.startTime = undefined
       searchForm.endTime = undefined
@@ -315,7 +307,7 @@ const handleReset = () => {
     appId: undefined,
     userId: undefined,
     messageType: undefined,
-    dateRange: undefined,
+
     startTime: undefined,
     endTime: undefined,
   })

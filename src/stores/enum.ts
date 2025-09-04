@@ -13,7 +13,7 @@ export const useEnumStore = defineStore('enumStore', () => {
   const loadCodeGenTypeList = async () => {
     if (codeGenTypeList.value.length > 0) {
       // 如果已经有数据，直接返回
-      return codeGenTypeList.value
+      return codeGenTypeList
     }
 
     codeGenTypeListLoading.value = true
@@ -22,7 +22,7 @@ export const useEnumStore = defineStore('enumStore', () => {
       if (res.data.data?.list) {
         codeGenTypeList.value = res.data.data.list
       }
-      return codeGenTypeList.value
+      return codeGenTypeList
     } finally {
       codeGenTypeListLoading.value = false
     }
@@ -38,7 +38,7 @@ export const useEnumStore = defineStore('enumStore', () => {
   const loadUserRoleList = async () => {
     if (userRoleList.value.length > 0) {
       // 如果已经有数据，直接返回
-      return userRoleList.value
+      return userRoleList
     }
 
     userRoleListLoading.value = true
@@ -47,7 +47,7 @@ export const useEnumStore = defineStore('enumStore', () => {
       if (res.data.data?.list) {
         userRoleList.value = res.data.data.list
       }
-      return userRoleList.value
+      return userRoleList
     } finally {
       userRoleListLoading.value = false
     }
@@ -63,7 +63,7 @@ export const useEnumStore = defineStore('enumStore', () => {
   const loadUserStatusList = async () => {
     if (userStatusList.value.length > 0) {
       // 如果已经有数据，直接返回
-      return userStatusList.value
+      return userStatusList
     }
 
     userStatusListLoading.value = true
@@ -72,23 +72,41 @@ export const useEnumStore = defineStore('enumStore', () => {
       if (res.data.data?.list) {
         userStatusList.value = res.data.data.list
       }
-      return userStatusList.value
+      return userStatusList
     } finally {
       userStatusListLoading.value = false
     }
+  }
+
+  // 代码生成类型列表
+  const getCodeGenTypeText = (type?: string): string => {
+    return codeGenTypeList.value.find((item) => item.key === type)?.value || '未知'
+  }
+
+  // 用户角色列表
+  const getUserRoleText = (role?: string): string => {
+    return userRoleList.value.find((item) => item.key === role)?.value || '未知'
+  }
+
+  // 用户状态列表
+  const getUserStatusText = (status?: string): string => {
+    return userStatusList.value.find((item) => item.key === status)?.value || '未知'
   }
 
   return {
     codeGenTypeList,
     codeGenTypeListLoading,
     loadCodeGenTypeList,
-    
+    getCodeGenTypeText,
+
     userRoleList,
     userRoleListLoading,
     loadUserRoleList,
-    
+    getUserRoleText,
+
     userStatusList,
     userStatusListLoading,
     loadUserStatusList,
+    getUserStatusText,
   }
 })
