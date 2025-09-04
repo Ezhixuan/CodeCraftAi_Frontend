@@ -54,7 +54,7 @@ const enumStore = useEnumStore()
 
 const formatDate = (dateStr?: string): string => {
   if (!dateStr) return '-'
-  return DateUtil.formatDate(dateStr, 'yyyy-MM-dd HH:mm:ss')
+  return DateUtil.formatDate(dateStr, 'YYYY-MM-DD HH:mm')
 }
 
 const formatCodeGenType = (codeGenType?: string): string => {

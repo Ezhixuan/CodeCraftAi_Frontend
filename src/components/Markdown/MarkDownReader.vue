@@ -5,6 +5,7 @@
 <script setup lang="ts">
 import { computed, onMounted, nextTick } from 'vue'
 import MarkdownIt from 'markdown-it'
+
 import 'highlight.js/lib/common'
 import hljs from 'highlight.js'
 
@@ -12,24 +13,11 @@ const props = defineProps<{
   content: string | undefined
 }>()
 
-// 创建MarkdownIt实例并配置代码高亮功能
-var md = MarkdownIt({
-  highlight: function (str, lang) {
-    // 处理语言别名，特别是 Vue 相关的语言
-    const language = getLanguageAlias(lang)
-
-    if (language && hljs.getLanguage(language)) {
-      try {
-        return hljs.highlight(str, { language }).value
-      } catch (__) {}
-    }
-
-    // 返回转义后的原始代码
-    return md.utils.escapeHtml(str)
-  },
-})
-
-// 获取语言别名映射
+/**
+ * 获取语言别名映射
+ * @param lang - 原始语言标识
+ * @returns 映射后的语言标识
+ */
 const getLanguageAlias = (lang: string): string => {
   const aliases: Record<string, string> = {
     vue: 'xml',
@@ -48,10 +36,42 @@ const getLanguageAlias = (lang: string): string => {
   return aliases[lang] || lang
 }
 
+// 创建MarkdownIt实例并配置代码高亮功能
+const md: MarkdownIt = new MarkdownIt({
+  highlight: function (str: string, lang: string): string {
+    // 处理语言别名，特别是 Vue 相关的语言
+    const language = getLanguageAlias(lang)
+
+    if (language && hljs.getLanguage(language)) {
+      try {
+        return hljs.highlight(str, { language }).value
+      } catch {
+         // 忽略高亮错误，使用原始代码
+       }
+    }
+
+    // 返回转义后的原始代码
+    return md.utils.escapeHtml(str)
+  },
+})
+
 // 保存原始的 fence 渲染器
 const defaultFenceRenderer = md.renderer.rules.fence!
 
-md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+/**
+ * 自定义 fence 渲染器，添加代码块头部和复制功能
+ */
+md.renderer.rules.fence = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tokens: any[],
+  idx: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  options: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  env: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  self: any
+): string => {
   const token = tokens[idx]
   const lang = token.info ? token.info.trim() : 'plaintext'
 
@@ -75,7 +95,7 @@ md.renderer.rules.fence = (tokens, idx, options, env, self) => {
   `
 }
 
-const renderedHtml = computed(() => md.render(props.content))
+const renderedHtml = computed(() => md.render(props.content || ''))
 
 onMounted(() => {
   nextTick(() => {
@@ -135,7 +155,8 @@ function fallbackCopyTextToClipboard(text: string, button: Element) {
     setTimeout(() => {
       button.textContent = originalText
     }, 2000)
-  } catch (err) {
+  } catch {
+     // 忽略复制错误
     const originalText = button.textContent
     button.textContent = '复制失败'
     setTimeout(() => {
