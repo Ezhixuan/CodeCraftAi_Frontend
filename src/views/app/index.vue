@@ -174,7 +174,6 @@
                     type="default"
                     :loading="downloadLoading"
                     @click="handleDownloadClick"
-                    :disabled="!isOwner"
                     size="small"
                   >
                     <template #icon><DownloadOutlined /></template>
@@ -639,6 +638,7 @@ const handlePreviewClick = async () => {
  * 处理部署按钮点击
  */
 const handleDeployClick = async () => {
+  console.log('开始部署')
   if (!appId.value) return
 
   // 如果已经部署，询问是否重新部署
@@ -650,6 +650,8 @@ const handleDeployClick = async () => {
       cancelText: '取消',
       onOk: () => handleDeploy(),
     })
+  } else {
+    await handleDeploy()
   }
 }
 
@@ -665,6 +667,7 @@ const handleDeploy = async () => {
 
     // 获取最新状态
     await getAppStatusById(appId.value)
+    message.info('部署成功')
   } catch (error) {
     console.error('部署失败:', error)
     message.error(`部署失败: ${error instanceof Error ? error.message : '请重试'}`)
@@ -715,17 +718,17 @@ const sendMessage = async () => {
   let content = newMessage.value.trim()
   if (!content || chatLoading.value) return
 
-  // 如果有选中的元素信息，拼接到消息中
-  if (selectedElementInfo.value) {
-    content += `\n\n选中的元素: ${selectedElementInfo.value}`
-    selectedElementInfo.value = '' // 发送后清空选中信息
-  }
-
   messages.value.push(buildMessage('user', content, false))
 
   newMessage.value = ''
   previewUrl.value = ''
   previewState.value = false
+
+  // 如果有选中的元素信息，拼接到消息中,但是不出现在用户对话中,所以在将 message push之后再拼接发送
+  if (selectedElementInfo.value) {
+    content += `\n\n <selected> ${selectedElementInfo.value} </selected>`
+    selectedElementInfo.value = '' // 发送后清空选中信息
+  }
   await startCodeGeneration(content)
 }
 

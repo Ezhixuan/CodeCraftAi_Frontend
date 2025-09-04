@@ -293,14 +293,13 @@ export function useIframe() {
       console.log('路由', elementInfo.pagePath, elementInfo.routePath)
       const routeInfo = '路由: ' + (elementInfo.routePath || '未知')
 
-      const infoStr =
+      selectedElementInfo.value =
         `${routeInfo}\n` +
         `${elementInfo.tagName}` +
         `${elementInfo.id ? '#' + elementInfo.id : ''}` +
         `${elementInfo.className ? '.' + elementInfo.className.replace(/\s+/g, '.') : ''}\n` +
         `${elementInfo.textContent ? '文本: ' + elementInfo.textContent.substring(0, 50) : ''}\n` +
         `${elementInfo.selector ? '选择器: ' + elementInfo.selector : ''}`
-      selectedElementInfo.value = infoStr
     }
   }
 
