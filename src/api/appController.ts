@@ -48,7 +48,7 @@ export async function getAppList(
 }
 
 /** 获取精选应用列表 GET /app/list/featured */
-export async function getFeaturedAppList(options?: { [key: string]: any }) {
+export async function getAppFeaturedList(options?: { [key: string]: any }) {
   return request<API.PageResponseAppInfoCommonResVo>('/app/list/featured', {
     method: 'GET',
     ...(options || {}),

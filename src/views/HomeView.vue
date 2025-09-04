@@ -86,7 +86,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { getAppList, getFeaturedAppList } from '@/api/appController.ts'
+import { getAppList, getAppFeaturedList } from '@/api/appController.ts'
 import { postAppInfo } from '@/api/appCoreController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import router from '@/router'
@@ -159,7 +159,7 @@ const loadUserApps = async () => {
 const loadFeaturedApps = async () => {
   featuredAppsLoading.value = true
   try {
-    const response = await getFeaturedAppList()
+    const response = await getAppFeaturedList()
     if (response.data.data?.list) {
       featuredApps.value = response.data.data?.list || []
     }

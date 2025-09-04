@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getUserInfo } from '@/api/userController.ts'
+import { getLoginUserInfo } from '@/api/userController.ts'
 
 export const useLoginUserStore = defineStore('loginUser', () => {
   // 设置默认值
@@ -13,11 +13,12 @@ export const useLoginUserStore = defineStore('loginUser', () => {
   // 获取登录用户信息
   async function fetchLoginUserInfo() {
     try {
-      const res = await getUserInfo()
+      const res = await getLoginUserInfo()
       if (res.data.data) {
         loginUser.value = res.data.data
       }
     } catch (error) {
+      console.error('获取登录用户信息失败:', error)
       logout()
     }
   }

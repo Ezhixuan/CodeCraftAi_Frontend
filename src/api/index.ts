@@ -5,6 +5,7 @@
 import * as userController from './userController'
 import * as appController from './appController'
 import * as appCoreController from './appCoreController'
+import * as userAdminController from './userAdminController'
 import * as adminAppController from './adminAppController'
 import * as healthController from './healthController'
 import * as enumController from './enumController'
@@ -14,6 +15,7 @@ export default {
   userController,
   appController,
   appCoreController,
+  userAdminController,
   adminAppController,
   healthController,
   enumController,

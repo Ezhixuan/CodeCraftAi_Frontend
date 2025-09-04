@@ -21,18 +21,18 @@ const router = createRouter({
     {
       path: '/auth/login',
       name: 'auth-login',
-      component: () => import('@/views/user/auth/components/LoginAndRegisterForm.vue'),
+      component: () => import('@/views/user/auth/UserAuthView.vue'),
     },
     {
       path: '/auth/register',
       name: 'auth-register',
-      component: () => import('@/views/user/auth/components/LoginAndRegisterForm.vue'),
+      component: () => import('@/views/user/auth/UserAuthView.vue'),
     },
     // 用户个人信息页面
     {
       path: '/user/profile',
       name: 'user-profile',
-      component: () => import('@/views/user/auth/UserAuthView.vue'),
+      component: () => import('@/views/user/UserInfoView.vue'),
       meta: {
         requiresAuth: true,
       },

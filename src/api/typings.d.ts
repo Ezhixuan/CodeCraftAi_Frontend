@@ -1,20 +1,4 @@
 declare namespace API {
-  type adminAddBySizeParams = {
-    size: number
-  }
-
-  type adminDisableParams = {
-    disableId: string
-  }
-
-  type adminGetListParams = {
-    queryReqVo: UserQueryReqVo
-  }
-
-  type adminGetUserInfoParams = {
-    id: string
-  }
-
   type AppGenerateReqVo = {
     /** 初始化提示 */
     initPrompt: string
@@ -268,8 +252,16 @@ declare namespace API {
     reqVo: ChatUserQueryReqVo
   }
 
+  type getUserInfoAdminParams = {
+    id: string
+  }
+
   type getUserInfoByIdParams = {
     id: string
+  }
+
+  type getUserListAdminParams = {
+    queryReqVo: UserQueryReqVo
   }
 
   type KeyValueResVo = {
@@ -363,8 +355,16 @@ declare namespace API {
     totalPage?: string
   }
 
+  type postUserAddBySizeAdminParams = {
+    size: number
+  }
+
   type putAppDeployParams = {
     appId: string
+  }
+
+  type putUserDisabledAdminParams = {
+    disableId: string
   }
 
   type ServerSentEventString = true
